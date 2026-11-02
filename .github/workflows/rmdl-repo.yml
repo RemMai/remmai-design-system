@@ -1,0 +1,22 @@
+name: RMDL Repository Checks
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+jobs:
+  rmdl-repository-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check central repository and component registry
+        run: node scripts/check-repo.mjs
+      - name: Verify business policy guard tests
+        run: node --test tests/rmdl-guard.test.mjs
+# This checks the RMDL STANDARD REPOSITORY, not an application.
+# Business repo sample is under templates/project/.github/workflows.
+# Build/typecheck/visual checks must be added when packages are publishable.

@@ -1,0 +1,32 @@
+{
+  "$schema": "./policy/rmdl-project.schema.json",
+  "standardVersion": "0.3.0",
+  "projectName": "ExampleProduct",
+  "selection": {
+    "operation": "new",
+    "productType": "admin",
+    "frontendFramework": "vite",
+    "backendLanguage": "dotnet",
+    "orm": "freesql",
+    "productionDatabase": "postgresql",
+    "deployment": "docker",
+    "migrationStrategy": "not-applicable"
+  },
+  "fixed": {
+    "webFramework": "react",
+    "language": "typescript-strict",
+    "packageManager": "bun",
+    "uiLibrary": "heroui-v3",
+    "cssEngine": "tailwind-v4",
+    "iconSet": "lucide",
+    "designSystem": "rmdl-core",
+    "sharedUiPackage": "@remmai/rmdl-ui",
+    "uiVersion": "0.3.0"
+  },
+  "governance": {
+    "state": "draft",
+    "approvedBy": null,
+    "approvalReference": null,
+    "approvedAt": null
+  }
+}

@@ -1,0 +1,3 @@
+# Copy to .npmrc and replace OWNER with the real GitHub account or organization.
+# Do not put auth tokens in a committed .npmrc file.
+@YOUR_GITHUB_OWNER:registry=https://npm.pkg.github.com

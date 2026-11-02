@@ -1,0 +1,87 @@
+/* RemMai Design Language — Young Tech · v0.2
+ * Core semantic color tokens. Adapt these to HeroUI/Tailwind/EvilCharts.
+ * Decorative secondary and accent colors must not be used as small text on light backgrounds.
+ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --rmdl-bg-canvas: #F7F9FF;
+  --rmdl-bg-surface: #FFFFFF;
+  --rmdl-bg-elevated: #FFFFFF;
+  --rmdl-fg-primary: #172136;
+  --rmdl-fg-secondary: #5C687E;
+  --rmdl-border-default: #E3EAF4;
+
+  --rmdl-brand-primary: #245CF5;
+  --rmdl-brand-primary-hover: #1D4FCC;
+  --rmdl-brand-on-primary: #FFFFFF;
+  --rmdl-brand-secondary: #0DBFA5;
+  --rmdl-brand-accent: #FF6B78;
+
+  --rmdl-status-success: #087F7A;
+  --rmdl-status-warning: #A66900;
+  --rmdl-status-danger: #C92D49;
+
+  --rmdl-chart-1: #245CF5;
+  --rmdl-chart-2: #087F7A;
+  --rmdl-chart-3: #C92D49;
+  --rmdl-chart-4: #A66900;
+  --rmdl-chart-5: #7657B9;
+  --rmdl-chart-6: #087FA3;
+
+  --rmdl-radius-sm: 8px;
+  --rmdl-radius-md: 12px;
+  --rmdl-radius-lg: 16px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --rmdl-bg-canvas: #101624;
+  --rmdl-bg-surface: #192235;
+  --rmdl-bg-elevated: #232F46;
+  --rmdl-fg-primary: #F3F6FF;
+  --rmdl-fg-secondary: #A9B9D1;
+  --rmdl-border-default: #344258;
+
+  --rmdl-brand-primary: #86ADFF;
+  --rmdl-brand-primary-hover: #A3BEFF;
+  --rmdl-brand-on-primary: #101624;
+  --rmdl-brand-secondary: #42D8BD;
+  --rmdl-brand-accent: #FF8B91;
+
+  --rmdl-status-success: #42D8BD;
+  --rmdl-status-warning: #EAB84F;
+  --rmdl-status-danger: #FF8B91;
+
+  --rmdl-chart-1: #86ADFF;
+  --rmdl-chart-2: #42D8BD;
+  --rmdl-chart-3: #FF8B91;
+  --rmdl-chart-4: #EAB84F;
+  --rmdl-chart-5: #B59BFF;
+  --rmdl-chart-6: #64C6E8;
+}
+
+/* RMDL v0.3 global typography, density and motion contract */
+:root {
+  --rmdl-font-sans: Inter, "Noto Sans SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --rmdl-text-xs: 12px;
+  --rmdl-text-sm: 14px;
+  --rmdl-text-base: 16px;
+  --rmdl-text-lg: 18px;
+  --rmdl-text-title: 24px;
+  --rmdl-text-display: 32px;
+  --rmdl-space-1: 4px;
+  --rmdl-space-2: 8px;
+  --rmdl-space-3: 12px;
+  --rmdl-space-4: 16px;
+  --rmdl-space-6: 24px;
+  --rmdl-space-8: 32px;
+  --rmdl-space-12: 48px;
+  --rmdl-sidebar-width: 240px;
+  --rmdl-topbar-height: 56px;
+  --rmdl-content-max: 1440px;
+  --rmdl-table-row-compact: 40px;
+  --rmdl-table-row-standard: 48px;
+  --rmdl-motion-fast: 140ms;
+  --rmdl-motion-normal: 220ms;
+}

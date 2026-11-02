@@ -1,0 +1,8 @@
+{
+  "name": "@remmai/rmdl-tokens",
+  "version": "0.3.0",
+  "type": "module",
+  "private": true,
+  "sideEffects": ["*.css"],
+  "exports": {"./colors.css": "./rmdl-colors.css"}
+}

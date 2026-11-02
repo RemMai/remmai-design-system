@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RMDL Project Selection v0.3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["standardVersion", "projectName", "selection", "fixed", "governance"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "standardVersion": {"const": "0.3.0"},
+    "projectName": {"type": "string", "minLength": 1},
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "productType", "frontendFramework", "backendLanguage", "orm", "productionDatabase", "deployment", "migrationStrategy"],
+      "properties": {
+        "operation": {"enum": ["new", "refactor"]},
+        "productType": {"enum": ["admin", "data", "portal", "game", "content", "service"]},
+        "frontendFramework": {"enum": ["vite", "next", "none"]},
+        "backendLanguage": {"enum": ["dotnet", "java", "python", "node", "none"]},
+        "orm": {"enum": ["freesql", "efcore", "hibernate", "sqlalchemy", "drizzle", "none"]},
+        "productionDatabase": {"enum": ["postgresql", "mariadb", "sqlite", "none"]},
+        "deployment": {"enum": ["docker", "linux", "windows", "hybrid"]},
+        "migrationStrategy": {"enum": ["not-applicable", "incremental", "rewrite"]}
+      }
+    },
+    "fixed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["webFramework", "language", "packageManager", "uiLibrary", "cssEngine", "iconSet", "designSystem", "sharedUiPackage", "uiVersion"],
+      "properties": {
+        "webFramework": {"const": "react"},
+        "language": {"const": "typescript-strict"},
+        "packageManager": {"const": "bun"},
+        "uiLibrary": {"const": "heroui-v3"},
+        "cssEngine": {"const": "tailwind-v4"},
+        "iconSet": {"const": "lucide"},
+        "designSystem": {"const": "rmdl-core"},
+        "sharedUiPackage": {"const": "@remmai/rmdl-ui"},
+        "uiVersion": {"const": "0.3.0"}
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "approvedBy", "approvalReference", "approvedAt"],
+      "properties": {
+        "state": {"enum": ["draft", "locked"]},
+        "approvedBy": {"type": ["string", "null"]},
+        "approvalReference": {"type": ["string", "null"]},
+        "approvedAt": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

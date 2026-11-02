@@ -1,0 +1,22 @@
+name: RMDL Business Project Policy
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+jobs:
+  rmdl-business-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # PRIVATE SUBMODULE REQUIRES EXPLICIT AUTHORIZATION.
+          # Default GITHUB_TOKEN may not be authorized to read the RMDL private repo.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate project selection and static RMDL constraints
+        run: node vendor/rmdl/scripts/rmdl.mjs check --root .
+      # The workflow is an INCOMPLETE TEMPLATE: it must include Bun setup,
+      # install --frozen-lockfile, typecheck, lint, tests, build and visual tests.
+      # Do not require this check until private submodule auth + actual project setup work.

@@ -1,0 +1,9 @@
+# 复制到 .github/CODEOWNERS 后，将 @YOUR_GITHUB_ID 换为真实维护者，再开启受保护分支、Require review from Code Owners。
+/AGENTS.md @YOUR_GITHUB_ID
+/RMDL.md @YOUR_GITHUB_ID
+/rmdl.project.json @YOUR_GITHUB_ID
+/policy/ @YOUR_GITHUB_ID
+/packages/tokens/ @YOUR_GITHUB_ID
+/packages/ui/ @YOUR_GITHUB_ID
+/scripts/rmdl.mjs @YOUR_GITHUB_ID
+/.github/workflows/ @YOUR_GITHUB_ID

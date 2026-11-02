@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc.local

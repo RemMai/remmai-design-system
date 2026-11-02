@@ -1,0 +1,13 @@
+pipeline {
+  agent any
+  stages {
+    stage('RMDL Policy') {
+      steps { sh 'node scripts/rmdl.mjs check' }
+    }
+    stage('RMDL Guard Tests') {
+      steps { sh 'node --test tests/rmdl-guard.test.mjs' }
+    }
+    // Add frozen Bun install, typecheck, lint, tests, build, Playwright visual
+    // once the actual apps/web workspace has been initialized.
+  }
+}

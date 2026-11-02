@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "0.1.0",
+  "notes": "No approved/published components yet; status is not proof of release",
+  "components": [
+    {
+      "id": "app-shell",
+      "name": "RMDL AppShell",
+      "status": "candidate",
+      "category": "layout",
+      "package": "@remmai/rmdl-ui",
+      "export": "AppShell",
+      "version": null,
+      "source": "packages/ui/src/AppLayout.tsx",
+      "ownerApproval": null,
+      "visualReference": null,
+      "reviewNotes": "v0.3 layout source only; requires build, demos, approval and release before cross-repo consumption"
+    },
+    {
+      "id": "data-table",
+      "name": "RMDL DataTable",
+      "status": "proposed",
+      "category": "data-display",
+      "package": null,
+      "export": null,
+      "version": null,
+      "source": null,
+      "ownerApproval": null,
+      "visualReference": null,
+      "reviewNotes": "Target for future promotion from a user-approved A-project table; not implemented"
+    }
+  ]
+}
