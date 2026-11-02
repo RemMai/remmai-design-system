@@ -296,3 +296,79 @@ app.Run();
 
 ### 4. Agent 协作纪律
 - **严禁重新手写**：所有基于 .NET 的业务后端，在接到“接入 Authentik / 增加登录权限 / 实现 RBAC”任务时，**必须直接使用 `RemMai.Rmdl.Auth`**，不得自行编写重复的 OAuth HTTP 请求、JWT 解析或自制密码哈希代码。
+
+---
+
+## 九、全站目标路由鉴权与未登录自动重定向标准 (Auto-Redirect Gate)
+
+### 1. 致命安全隐患：未登录直穿后台 (Direct Entry Flaw)
+很多前端 SPA 应用或包含静态文件服务的系统存在严重缺陷：
+- 访客在未登录状态下直接在浏览器地址栏输入目标受保护目录（如 `/`、`/tasks`、`/settings`）；
+- 后端由于 `MapFallbackToFile("index.html")` 直接把前端静态 HTML/JS 吐给了未登录访客；
+- 前端组件甚至先在屏幕上绘制出了系统导航栏、页面标题和空白表格骨架，直到异步 AJAX 请求报错才弹出提示。**这种“未登录直接进程序”是严禁出现的灾难性体验**。
+
+### 2. 双重强制守卫标准 (Dual-Layer Gate)
+
+系统必须在**后端**与**前端**实现双重物理阻断：
+
+#### A. 后端守卫：`UseRmdlSpaAuthGuard` 中间件（首道防线，物理阻断 HTML）
+在后端服务中，必须在静态文件或 SPA 回退路由之前挂载 `UseRmdlSpaAuthGuard()`：
+
+```csharp
+var app = builder.Build();
+
+app.UseCors();
+
+// 1. 映射认证与回调 API
+app.MapRmdlAuthEndpoints();
+
+// 2. 核心：挂载 SPA 页面路由鉴权守卫（未登录直接 302 弹回登录页，绝不发送 index.html 页面）
+app.UseRmdlSpaAuthGuard(options =>
+{
+    options.LoginPagePath = "/login";
+    // 白名单路径默认包含 /login, /api/auth, /assets, /static 等
+    // options.ExcludedPrefixes.Add("/public");
+});
+
+// 3. 静态文件与 SPA 兜底
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
+
+app.Run();
+```
+
+- **工作机制**：当浏览器以 `text/html` 请求任何受保护的路径时，中间件检查请求携带的 `rmdl_token`（由 Cookie 或 Header 提供）。如果未登录，**后端直接返回 302 重定向到 `/login?redirect={returnUrl}`**。
+- **效果**：未经授权的用户根本无法从服务器获取到任何受保护页面的 HTML 和 JS，杜绝任何未登录进入程序内部的可能性！
+
+#### B. 前端守卫：`AuthGuard` 路由守卫（第二道防线）
+在前端应用（React / Next / Vite）中，必须实现前置路由拦截：
+```tsx
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const token = localStorage.getItem('rmdl_token') || getCookie('rmdl_token');
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (!token) {
+      window.location.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        if (!res.ok) throw new Error('Unauthenticated');
+        return res.json();
+      })
+      .then(data => { setUser(data.data); setLoading(false); })
+      .catch(() => {
+        window.location.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      });
+  }, [token]);
+
+  if (loading || !user) {
+    return <div className="flex h-screen items-center justify-center">正在验证身份...</div>;
+  }
+
+  return <>{children}</>;
+}
+```
+- 严禁在获取到有效身份前提前渲染控制台或业务组件。

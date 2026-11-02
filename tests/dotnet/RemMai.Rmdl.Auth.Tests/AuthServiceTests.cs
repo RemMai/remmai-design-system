@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using RemMai.Rmdl.Auth.Configuration;
 using RemMai.Rmdl.Auth.Domain;
 using RemMai.Rmdl.Auth.Infrastructure;
+using RemMai.Rmdl.Auth.Middleware;
 using RemMai.Rmdl.Auth.Models;
 using RemMai.Rmdl.Auth.Services;
 using Xunit;
@@ -130,6 +131,47 @@ public class AuthServiceTests : IDisposable
         var res = await service.LoginAsync(new RmdlLoginRequest("admin", "anypassword"));
         Assert.False(res.Ok);
         Assert.Contains("单点登录", res.Error);
+    }
+
+    [Fact]
+    public async Task SpaGuardMiddleware_UnauthenticatedPageAccess_RedirectsToLogin()
+    {
+        var authOptions = new RmdlAuthOptions { Mode = "LocalRbac" };
+        var service = new RmdlAuthService(
+            _fsql,
+            Options.Create(authOptions),
+            new MockHttpClientFactory(),
+            NullLogger<RmdlAuthService>.Instance
+        );
+
+        var guardOptions = new RmdlSpaGuardOptions
+        {
+            LoginPagePath = "/login"
+        };
+
+        var middleware = new RemMai.Rmdl.Auth.Middleware.RmdlSpaAuthGuardMiddleware(
+            next: (ctx) => Task.CompletedTask,
+            Options.Create(guardOptions)
+        );
+
+        // 1. Visit /dashboard without token
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        context.Request.Path = "/dashboard";
+        context.Request.Method = "GET";
+        context.Request.Headers.Accept = "text/html";
+
+        await middleware.InvokeAsync(context, service, Options.Create(authOptions));
+
+        Assert.Equal(302, context.Response.StatusCode);
+        Assert.Equal("/login?redirect=%2Fdashboard", context.Response.Headers.Location.ToString());
+
+        // 2. Visit /api/tasks without token
+        var apiContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        apiContext.Request.Path = "/api/tasks";
+        apiContext.Request.Method = "GET";
+
+        await middleware.InvokeAsync(apiContext, service, Options.Create(authOptions));
+        Assert.Equal(401, apiContext.Response.StatusCode);
     }
 
     private class MockHttpClientFactory : IHttpClientFactory

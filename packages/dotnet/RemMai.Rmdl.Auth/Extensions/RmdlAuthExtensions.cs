@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RemMai.Rmdl.Auth.Configuration;
 using RemMai.Rmdl.Auth.Domain;
 using RemMai.Rmdl.Auth.Filters;
+using RemMai.Rmdl.Auth.Middleware;
 using RemMai.Rmdl.Auth.Models;
 using RemMai.Rmdl.Auth.Services;
 
@@ -30,6 +32,9 @@ public static class RmdlAuthExtensions
             services.PostConfigure(configure);
         }
 
+        // 注册 SPA 页面访问守卫配置
+        services.Configure<RmdlSpaGuardOptions>(section.GetSection("SpaGuard"));
+
         // 注册 HttpClient
         services.AddHttpClient("RmdlAuthentik", client =>
         {
@@ -40,6 +45,23 @@ public static class RmdlAuthExtensions
         services.AddScoped<IRmdlAuthService, RmdlAuthService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// 启用 SPA 页面与目标路由访问守卫中间件（未登录强制 302 重定向到 /login，绝不允许无凭据进入程序后台）
+    /// </summary>
+    public static IApplicationBuilder UseRmdlSpaAuthGuard(
+        this IApplicationBuilder app,
+        Action<RmdlSpaGuardOptions>? configure = null)
+    {
+        if (configure != null)
+        {
+            var options = new RmdlSpaGuardOptions();
+            configure(options);
+            return app.UseMiddleware<RmdlSpaAuthGuardMiddleware>(Options.Create(options));
+        }
+
+        return app.UseMiddleware<RmdlSpaAuthGuardMiddleware>();
     }
 
     /// <summary>
@@ -61,7 +83,7 @@ public static class RmdlAuthExtensions
         .WithSummary("获取系统认证策略与 SSO 登录配置");
 
         // 2. 本地账密登录（Authentik 模式下强制 403 阻断）
-        group.MapPost("/login", async (RmdlLoginRequest request, IRmdlAuthService authService) =>
+        group.MapPost("/login", async (HttpContext context, RmdlLoginRequest request, IRmdlAuthService authService) =>
         {
             var res = await authService.LoginAsync(request);
             if (!res.Ok)
@@ -72,6 +94,19 @@ public static class RmdlAuthExtensions
                 }
                 return Results.Json(res, statusCode: 400);
             }
+
+            // 成功后自动植入 HttpOnly 会话 Cookie，供 SPA 页面守卫验证
+            if (!string.IsNullOrEmpty(res.Token))
+            {
+                context.Response.Cookies.Append("rmdl_token", res.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = context.Request.IsHttps,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.FromUnixTimeSeconds(res.ExpireAt)
+                });
+            }
+
             return Results.Ok(res);
         })
         .WithName("RmdlPasswordLogin")
@@ -87,13 +122,26 @@ public static class RmdlAuthExtensions
         .WithSummary("获取 Authentik OAuth2 授权登录跳转链接");
 
         // 4. Authentik 回调换票
-        group.MapPost("/oauth/authentik/callback", async (RmdlAuthCallbackRequest request, IRmdlAuthService authService) =>
+        group.MapPost("/oauth/authentik/callback", async (HttpContext context, RmdlAuthCallbackRequest request, IRmdlAuthService authService) =>
         {
             var res = await authService.AuthentikCallbackAsync(request);
             if (!res.Ok)
             {
                 return Results.Json(res, statusCode: 400);
             }
+
+            // 成功后自动植入 HttpOnly 会话 Cookie
+            if (!string.IsNullOrEmpty(res.Token))
+            {
+                context.Response.Cookies.Append("rmdl_token", res.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = context.Request.IsHttps,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.FromUnixTimeSeconds(res.ExpireAt)
+                });
+            }
+
             return Results.Ok(res);
         })
         .WithName("AuthentikCallback")
@@ -141,6 +189,10 @@ public static class RmdlAuthExtensions
             {
                 await authService.LogoutAsync(token);
             }
+
+            // 清理 Cookie
+            context.Response.Cookies.Delete("rmdl_token");
+
             return Results.Ok(new { ok = true, message = "已安全退出登录" });
         })
         .WithName("RmdlLogout")
