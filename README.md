@@ -83,6 +83,59 @@ git push -u origin main
 
 具体说明、密钥处理、GitHub Free 私有仓库保护限制、克隆方式：[09](docs/09-GitHub私有仓库初始化.md)。
 
+## 业务项目如何引入与更新本标准
+
+业务仓库（如你的各业务系统）通过 **Git Submodule** 引入并锁定本规范，切勿直接拷贝本仓库源码。
+
+### 1. 业务项目初次引入标准
+
+在你的业务项目根目录下执行：
+
+```bash
+# 1. 将规范库作为子模块添加到 vendor/rmdl
+git submodule add https://github.com/RemMai/remmai-design-system.git vendor/rmdl
+
+# 2. 复制 Agent 规范入口模板到业务项目根
+cp vendor/rmdl/templates/project/AGENTS.md ./AGENTS.md
+cp vendor/rmdl/templates/project/CLAUDE.md ./CLAUDE.md
+
+# 3. 初始化并锁定该业务项目的技术选型（按提示回答或直接生成）
+node vendor/rmdl/scripts/rmdl.mjs init new --root .
+node vendor/rmdl/scripts/rmdl.mjs approve --root .
+
+# 4. 提交引入基线
+git add .gitmodules vendor/rmdl AGENTS.md CLAUDE.md rmdl.project.json
+git commit -m "chore: integrate RMDL design standards submodule"
+```
+
+> **克隆已包含子模块的业务仓库**：如果是他人或在全新机器拉取业务仓库，使用：  
+> `git clone --recurse-submodules <业务仓库URL>`  
+> 或者在常规 clone 后执行：`git submodule update --init --recursive`
+
+---
+
+### 2. 业务项目后续更新标准（Pull & Re-check）
+
+当 RMDL 主仓库发布了新规范、新文档（如新增权限标准）或修复了门禁脚本后，在业务项目根目录下按以下步骤更新：
+
+```bash
+# 方式 A：进入 submodule 目录精准拉取（最稳妥，支持指定分支或 Release Tag）
+cd vendor/rmdl
+git pull origin main
+# 若需锁定到指定发布版本：git checkout <TAG_NAME>
+cd ../..
+
+# 方式 B：根目录单行更新
+git submodule update --remote --merge vendor/rmdl
+
+# 检查：拉取更新后，立即运行门禁验证业务项目是否依然合规
+bun vendor/rmdl/scripts/rmdl.mjs check --root .
+
+# 提交：在业务仓中记录本次规范升级的 Commit 指针
+git add vendor/rmdl
+git commit -m "chore(rmdl): upgrade RMDL design standards to latest"
+```
+
 ## 仓库使用纪律
 
 所有规范、组件和 Token 的公共变更只能通过 **RMDL 主仓库** 完成；业务仓库不能以覆盖 CSS 的方式“修复”公共组件。设计变更需要 issue/ADR、组件示例、测试、版本号及你的批准；消费者通过固定版本和 PR 升级。Agent 的输出只算提案，永远不是所有者批准证明。
