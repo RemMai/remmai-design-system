@@ -32,6 +32,7 @@
    - **帮助文案边界**：说明文案仅允许出现在输入框内部占位符（Placeholder）、字段右侧轻量 Tooltip 图标或不可逆破坏性操作的二次确认弹窗中。
    - 避免双重页头、无意义 KPI 卡、冗长欢迎语。页面结构使用统一契约。
 8. **认证、Authentik 与未登录自动重定向标准**：.NET 后端接入用户身份认证、自管 RBAC 或 Authentik OAuth/OIDC 单点登录时，**严禁各项目自行手写 OAuth/JWT/RBAC 逻辑**。必须直接使用 RMDL 统一核心包 `packages/dotnet/RemMai.Rmdl.Auth`，通过 `appsettings.json` 的 `Auth` 节点配置参数，调用 `AddRmdlAuth()` 与 `MapRmdlAuthEndpoints()` 接入。**系统必须启用未登录访问守卫 (`app.UseRmdlSpaAuthGuard()`)**，访客未登录访问受保护目标目录时**强制 302 自动重定向至登录页 (`/login?redirect=...`)**，严禁让未登录访客直接进入应用后台或输出受保护页面的 DOM 骨架。
+9. **Admin 视口与独立滚动标准**：管理后台视口必须高度稳定（`100vh; overflow: hidden`）。顶部 Header 与左侧 Menu 严禁跟随页面滚动；右侧 Header 下方的 Content 内容区在高度溢出时独立滚动（`overflow-y: auto`）；用户信息（头像/昵称/退出）必须强制吸附沉底在左侧 Menu 最下方。
 
 ## 3. RMDL 主库改动规则
 

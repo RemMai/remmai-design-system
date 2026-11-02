@@ -1,5 +1,7 @@
 .rmdl-shell {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: grid;
   grid-template-columns: var(--rmdl-sidebar-width) minmax(0, 1fr);
   background: var(--rmdl-bg-canvas);
@@ -7,47 +9,221 @@
   font-family: var(--rmdl-font-sans);
   font-size: var(--rmdl-text-sm);
 }
+
+/* 左侧栏：固定满高，不随页面滚动；内部垂直弹性布局 */
 .rmdl-shell__sidebar {
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--rmdl-bg-surface);
   border-right: 1px solid var(--rmdl-border-default);
   min-width: 0;
+  overflow: hidden;
 }
-.rmdl-shell__brand {height: var(--rmdl-topbar-height); display: flex; align-items: center; padding-inline: var(--rmdl-space-6); font-weight: 700; font-size: var(--rmdl-text-base);}
-.rmdl-nav {display: grid; gap: var(--rmdl-space-1); padding: var(--rmdl-space-3);}
-.rmdl-nav__link {display: flex; align-items: center; gap: var(--rmdl-space-3); padding: var(--rmdl-space-3); border-radius: var(--rmdl-radius-sm); color: var(--rmdl-fg-secondary); text-decoration: none; font-weight: 500;}
-.rmdl-nav__link:hover {background: var(--rmdl-bg-canvas); color: var(--rmdl-fg-primary);}
-.rmdl-nav__link--active {background: var(--rmdl-bg-canvas); color: var(--rmdl-brand-primary);}
-.rmdl-nav__link:focus-visible {outline: 2px solid var(--rmdl-brand-primary); outline-offset: 2px;}
-.rmdl-nav__icon {display: inline-flex;}
-.rmdl-nav--mobile {display: none;}
-.rmdl-shell__main {min-width: 0;}
+
+.rmdl-shell__brand {
+  height: var(--rmdl-topbar-height);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--rmdl-space-6);
+  font-weight: 700;
+  font-size: var(--rmdl-text-base);
+  border-bottom: 1px solid var(--rmdl-border-default);
+}
+
+/* 导航项区域：占用中间剩余高度，高度溢出时自身滚动 */
+.rmdl-shell__nav-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.rmdl-nav {
+  display: grid;
+  gap: var(--rmdl-space-1);
+  padding: var(--rmdl-space-3);
+}
+
+.rmdl-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--rmdl-space-3);
+  padding: var(--rmdl-space-3);
+  border-radius: var(--rmdl-radius-sm);
+  color: var(--rmdl-fg-secondary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.rmdl-nav__link:hover {
+  background: var(--rmdl-bg-canvas);
+  color: var(--rmdl-fg-primary);
+}
+
+.rmdl-nav__link--active {
+  background: var(--rmdl-bg-canvas);
+  color: var(--rmdl-brand-primary);
+}
+
+.rmdl-nav__link:focus-visible {
+  outline: 2px solid var(--rmdl-brand-primary);
+  outline-offset: 2px;
+}
+
+.rmdl-nav__icon {
+  display: inline-flex;
+}
+
+.rmdl-nav--mobile {
+  display: none;
+}
+
+/* 用户信息区：强制沉底吸附在 Menu 最下方 */
+.rmdl-shell__user {
+  margin-top: auto;
+  flex-shrink: 0;
+  border-top: 1px solid var(--rmdl-border-default);
+  background: var(--rmdl-bg-surface);
+  padding: var(--rmdl-space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--rmdl-space-3);
+  min-width: 0;
+}
+
+/* 右侧主视口：固定满高，垂直弹性布局 */
+.rmdl-shell__main {
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 顶部 Header：固定顶部，严禁随页面滚动 */
 .rmdl-shell__topbar {
   height: var(--rmdl-topbar-height);
+  flex-shrink: 0;
   background: var(--rmdl-bg-surface);
   border-bottom: 1px solid var(--rmdl-border-default);
   display: flex;
   align-items: center;
   padding-inline: var(--rmdl-space-6);
+  z-index: 10;
 }
-.rmdl-shell__content {padding: var(--rmdl-space-6);}
-.rmdl-page {max-width: var(--rmdl-content-max); margin-inline: auto; display: grid; gap: var(--rmdl-space-6);}
-.rmdl-page-header {display: flex; gap: var(--rmdl-space-4); align-items: flex-start; justify-content: space-between;}
-.rmdl-page-header__title {margin: 0; font-size: var(--rmdl-text-title); line-height: 1.3; font-weight: 650; letter-spacing: -0.02em;}
-.rmdl-page-header__description {margin: var(--rmdl-space-2) 0 0; color: var(--rmdl-fg-secondary); line-height: 1.5;}
-.rmdl-page-header__action {flex-shrink: 0; display: flex; gap: var(--rmdl-space-2); align-items: center;}
-.rmdl-toolbar {display: flex; align-items: center; flex-wrap: wrap; gap: var(--rmdl-space-3);}
-.rmdl-section {background: var(--rmdl-bg-surface); border: 1px solid var(--rmdl-border-default); border-radius: var(--rmdl-radius-md); padding: var(--rmdl-space-4);}
-.rmdl-section__title {font-size: var(--rmdl-text-base); margin: 0 0 var(--rmdl-space-4); font-weight: 600;}
-.rmdl-empty {min-height: 180px; display: grid; place-content: center; text-align: center; gap: var(--rmdl-space-2); color: var(--rmdl-fg-secondary);}
-.rmdl-empty__title {color: var(--rmdl-fg-primary); font-weight: 600;}
-.rmdl-empty__description {margin: 0;}
+
+/* 核心内容区：独立滚动容器，高度溢出时平滑滚动 */
+.rmdl-shell__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--rmdl-space-6);
+}
+
+.rmdl-page {
+  max-width: var(--rmdl-content-max);
+  margin-inline: auto;
+  display: grid;
+  gap: var(--rmdl-space-6);
+}
+
+.rmdl-page-header {
+  display: flex;
+  gap: var(--rmdl-space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.rmdl-page-header__title {
+  margin: 0;
+  font-size: var(--rmdl-text-title);
+  line-height: 1.3;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.rmdl-page-header__description {
+  margin: var(--rmdl-space-2) 0 0;
+  color: var(--rmdl-fg-secondary);
+  line-height: 1.5;
+}
+
+.rmdl-page-header__action {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--rmdl-space-2);
+  align-items: center;
+}
+
+.rmdl-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--rmdl-space-3);
+}
+
+.rmdl-section {
+  background: var(--rmdl-bg-surface);
+  border: 1px solid var(--rmdl-border-default);
+  border-radius: var(--rmdl-radius-md);
+  padding: var(--rmdl-space-4);
+}
+
+.rmdl-section__title {
+  font-size: var(--rmdl-text-base);
+  margin: 0 0 var(--rmdl-space-4);
+  font-weight: 600;
+}
+
+.rmdl-empty {
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: var(--rmdl-space-2);
+  color: var(--rmdl-fg-secondary);
+}
+
+.rmdl-empty__title {
+  color: var(--rmdl-fg-primary);
+  font-weight: 600;
+}
+
+.rmdl-empty__description {
+  margin: 0;
+}
+
 @media (max-width: 760px) {
-  .rmdl-shell {grid-template-columns: minmax(0, 1fr);}
-  .rmdl-shell__sidebar {display: none;}
-  .rmdl-nav--mobile {display: flex; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid var(--rmdl-border-default); background: var(--rmdl-bg-surface);}
-  .rmdl-nav--mobile .rmdl-nav__link {flex-shrink: 0;}
-  .rmdl-shell__content {padding: var(--rmdl-space-4);}
-  .rmdl-shell__topbar {padding-inline: var(--rmdl-space-4);}
-  .rmdl-page-header {flex-direction: column;}
-  .rmdl-page-header__action {align-self: flex-start;}
+  .rmdl-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rmdl-shell__sidebar {
+    display: none;
+  }
+  .rmdl-nav--mobile {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--rmdl-border-default);
+    background: var(--rmdl-bg-surface);
+    flex-shrink: 0;
+  }
+  .rmdl-nav--mobile .rmdl-nav__link {
+    flex-shrink: 0;
+  }
+  .rmdl-shell__content {
+    padding: var(--rmdl-space-4);
+  }
+  .rmdl-shell__topbar {
+    padding-inline: var(--rmdl-space-4);
+  }
+  .rmdl-page-header {
+    flex-direction: column;
+  }
+  .rmdl-page-header__action {
+    align-self: flex-start;
+  }
 }

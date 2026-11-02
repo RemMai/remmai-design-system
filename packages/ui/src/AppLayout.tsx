@@ -15,10 +15,26 @@ export type RmdlNavItem = {
   icon?: ReactNode;
 };
 
-/** Sidebar and mobile navigation are rendered from the same sanitized menu items. */
+/**
+ * RMDL Admin Layout 外壳
+ * 约束：
+ * 1. 顶栏 topbar 和左侧 sidebar 视口绝对固定，不跟随滚动
+ * 2. 右侧 content 区域高度溢出时独立滚动
+ * 3. userProfile 用户信息区强制沉底吸附在 Menu 侧边栏最下方
+ */
 export function AppShell({
-  appName, navigation, topbar, children,
-}: {appName: string; navigation: readonly RmdlNavItem[]; topbar: ReactNode; children: ReactNode}) {
+  appName,
+  navigation,
+  topbar,
+  userProfile,
+  children,
+}: {
+  appName: string;
+  navigation: readonly RmdlNavItem[];
+  topbar: ReactNode;
+  userProfile?: ReactNode;
+  children: ReactNode;
+}) {
   const menu = (className: string, label: string) => (
     <nav className={className} aria-label={label}>
       {navigation.map(item => (
@@ -34,11 +50,19 @@ export function AppShell({
       ))}
     </nav>
   );
+
   return (
     <div className="rmdl-shell">
       <aside className="rmdl-shell__sidebar" aria-label="侧边栏">
         <div className="rmdl-shell__brand">{appName}</div>
-        {menu('rmdl-nav rmdl-nav--desktop', '主导航')}
+        <div className="rmdl-shell__nav-wrapper">
+          {menu('rmdl-nav rmdl-nav--desktop', '主导航')}
+        </div>
+        {userProfile ? (
+          <div className="rmdl-shell__user">
+            {userProfile}
+          </div>
+        ) : null}
       </aside>
       <div className="rmdl-shell__main">
         <header className="rmdl-shell__topbar">{topbar}</header>
@@ -68,28 +92,30 @@ export function AppPageHeader({
 }
 
 export function AppToolbar({children}: {children: ReactNode}) {
-  return <div className="rmdl-toolbar" role="group" aria-label="页面工具栏">{children}</div>;
+  return <div className="rmdl-toolbar">{children}</div>;
 }
 
-export function AppSection({title, children}: {title?: string; children: ReactNode}) {
+export function AppSection({title, children}: {title: string; children: ReactNode}) {
   return (
     <section className="rmdl-section">
-      {title ? <h2 className="rmdl-section__title">{title}</h2> : null}
+      <h2 className="rmdl-section__title">{title}</h2>
       {children}
     </section>
   );
 }
 
-export function AppEmptyState({title, description}: {title: string; description?: string}) {
+export function AppEmptyState({
+  title, description, action,
+}: {title: string; description: string; action?: {label: string; onClick: () => void}}) {
   return (
-    <div className="rmdl-empty" role="status">
+    <div className="rmdl-empty">
       <div className="rmdl-empty__title">{title}</div>
-      {description ? <p className="rmdl-empty__description">{description}</p> : null}
+      <p className="rmdl-empty__description">{description}</p>
+      {action ? (
+        <div>
+          <Button color="primary" size="sm" onPress={action.onClick}>{action.label}</Button>
+        </div>
+      ) : null}
     </div>
   );
-}
-
-/** HeroUI v3 button contract; variants should be governed centrally. */
-export function AppButton(props: React.ComponentProps<typeof Button>) {
-  return <Button {...props} />;
 }
