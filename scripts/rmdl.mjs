@@ -161,6 +161,11 @@ function checkWeb(root, config, errors) {
       if (/\b(?:color|backgroundColor|borderColor)\s*:\s*["'`]#[a-fA-F0-9]{3,8}\b/.test(line)) {
         err(errors, `${rel}:${i+1} JS 内联色值应改为 RMDL Token`);
       }
+      if (/\.(?:tsx|jsx)$/.test(file)) {
+        if (/(?:功能(?:介绍|说明|概述|特性|列表)|使用(?:说明|指南|指引)|模块(?:简介|说明)|核心功能|本页面支持|特性亮点)/.test(line) && !/^\s*(?:\/\/|\/\*|\*)/.test(line)) {
+          err(errors, `${rel}:${i+1} 违规包含宣讲式/回显式功能说明文案（AI 冗余文案），后台只保留工作操作区`);
+        }
+      }
     }
     const isPage = /(^|\/)app\/(?:.*\/)?page\.tsx$/.test(rel) || /(^|\/)(?:pages|routes)\/.+\.tsx$/.test(rel);
     if (isPage && !code.includes('@remmai/rmdl-ui')) err(errors, `${rel} 页面必须直接导入统一 UI 核心包，防止独立造页`);

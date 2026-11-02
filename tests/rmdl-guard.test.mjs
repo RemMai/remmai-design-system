@@ -83,4 +83,10 @@ test('HeroUI styles imported before Tailwind are blocked',()=>{
     '@import \"@heroui/styles\";\n@import \"tailwindcss\";\n@import \"@remmai/rmdl-tokens/colors.css\";');
   assert.match(run(root).stderr,/必须在 TailwindCSS 之后/);
 });
+test('redundant AI promotional slop in UI is blocked',()=>{
+  const {root,web}=fixture();
+  fs.writeFileSync(path.join(web,'src/app/users/page.tsx'),
+    "import {AppPage} from '@remmai/rmdl-ui'; export default function Page(){return <AppPage><h2>核心功能介绍</h2></AppPage>}");
+  assert.match(run(root).stderr,/违规包含宣讲式/);
+});
 process.on('exit',()=>roots.forEach(root=>fs.rmSync(root,{recursive:true,force:true})));
