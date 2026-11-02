@@ -61,6 +61,7 @@
 |---|---|---|
 | v0.3 文档、业务项目 CLI、最小静态检查 | 可使用 | 根据业务项目真实文件运行；需要额外补 typecheck、lint、Visual |
 | 跨 Agent 统一入口和流程文档 | 已给出 | 项目必须实际引用这些文件才能生效 |
+| RemMai.Rmdl.Auth (.NET 双模授权库) | 已实现并测试 | 支持 .NET 10/8、FreeSql、Authentik OIDC、首登自举与权限过滤 |
 | Tokens、AppShell 相关组件源码 | 原型 | 尚未形成可跨仓库发布的构建产物 |
 | DataTable、Registry 的 approved 条目 | 尚无 | 不得声称 DataTable 已实现或发布 |
 | GitHub Packages 私有发布流程 | 文档/待实施 | 必须完成构建、测试、认证与 release workflow |

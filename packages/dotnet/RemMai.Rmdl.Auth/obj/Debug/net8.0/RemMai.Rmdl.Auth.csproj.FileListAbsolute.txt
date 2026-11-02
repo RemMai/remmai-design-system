@@ -1,0 +1,13 @@
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.csproj.AssemblyReference.cache
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.GeneratedMSBuildEditorConfig.editorconfig
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.AssemblyInfoInputs.cache
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.AssemblyInfo.cs
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.csproj.CoreCompileInputs.cache
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.sourcelink.json
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\bin\Debug\net8.0\RemMai.Rmdl.Auth.deps.json
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\bin\Debug\net8.0\RemMai.Rmdl.Auth.dll
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\bin\Debug\net8.0\RemMai.Rmdl.Auth.pdb
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.dll
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\refint\RemMai.Rmdl.Auth.dll
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\RemMai.Rmdl.Auth.pdb
+D:\RemMaiCodes\RMDL-v0.4-GitHub\packages\dotnet\RemMai.Rmdl.Auth\obj\Debug\net8.0\ref\RemMai.Rmdl.Auth.dll

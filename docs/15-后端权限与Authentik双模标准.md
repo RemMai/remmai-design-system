@@ -222,3 +222,77 @@ public static RouteHandlerBuilder RequirePermission(this RouteHandlerBuilder bui
 - [ ] Authentik 传递 `groups` 时，能正确匹配并映射到本地 `AppRole`。
 - [ ] 受保护的后端 API 经由 `RequirePermission` 或中间件拦截未授权请求，不依赖前端界面防御。
 - [ ] 前端在进入应用后调用 `/api/auth/config` 动态适配登录入口。
+
+---
+
+## 八、RMDL .NET 统一授权包 (`RemMai.Rmdl.Auth`)
+
+为避免各个业务系统各自手写 OAuth/JWT/RBAC 导致逻辑差异与安全漏洞，RMDL 提供了官方 .NET 统一组件库：  
+**`packages/dotnet/RemMai.Rmdl.Auth`**（支持 .NET 10 LTS 与 .NET 8 LTS）。
+
+### 1. 业务项目引入方式
+
+在业务系统后端 `.csproj` 中直接引用：
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\..\vendor\rmdl\packages\dotnet\RemMai.Rmdl.Auth\RemMai.Rmdl.Auth.csproj" />
+</ItemGroup>
+```
+
+### 2. 业务项目 `appsettings.json` 配置示例（以零跑采集 `lpnews.20000112.xyz` / Authentik Provider 2 为例）
+
+业务项目**只需要在 `appsettings.json` 中填写参数**，其余逻辑全部由组件库自动托管：
+
+```json
+{
+  "Auth": {
+    "Mode": "AuthentikOauth",
+    "TokenExpiryDays": 7,
+    "AdminUsername": "admin",
+    "AdminDefaultPassword": "Admin5677..",
+    "Authentik": {
+      "Authority": "https://oauth.20000114.xyz",
+      "ApplicationSlug": "shenling-spider",
+      "ClientId": "haB7DH33IGKPEu12a0nUhwyuYEHBcyAVZvjbniuC",
+      "ClientSecret": "I9ocKgBfZxa2ecka5rTIiZ3IitZAuHzluRiLy9rfsXvC9DmrnFt4fQinTqUACwkS4kx8ZXJJH6GHIccc26nSasvCYSkM8oLL47dZSQSIztrdmuD5o09uoSC850r2j7yi",
+      "RedirectUri": "https://lpnews.20000112.xyz/auth/callback",
+      "Scopes": "openid email profile",
+      "AdminGroup": "leapmotor-admins",
+      "AutoBootstrapFirstUserAsAdmin": true
+    }
+  }
+}
+```
+
+### 3. 后端入口接入代码 (`Program.cs` 仅需 2 行)
+
+```csharp
+using RemMai.Rmdl.Auth.Extensions;
+using RemMai.Rmdl.Auth.Filters;
+using RemMai.Rmdl.Auth.Domain;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. 注册 FreeSql (系统已有)
+builder.Services.AddSingleton(fsql);
+
+// 2. 注入 RMDL Auth 核心能力（自动读取配置中 Auth 小节并初始化 HttpClient）
+builder.Services.AddRmdlAuth(builder.Configuration);
+
+var app = builder.Build();
+
+// 3. 自动映射所有标准认证 API (/api/auth/config, /login, /oauth/authentik/*, /me, /logout)
+app.MapRmdlAuthEndpoints();
+
+// 4. 业务接口安全拦截（一行注入权限门禁）
+app.MapGet("/api/tasks", () => Results.Ok(new[] { "task-1" }))
+   .RequireRmdlPermission(RmdlPermissionCodes.BusinessView);
+
+app.MapPost("/api/tasks/run", () => Results.Ok())
+   .RequireRmdlPermission(RmdlPermissionCodes.BusinessManage);
+
+app.Run();
+```
+
+### 4. Agent 协作纪律
+- **严禁重新手写**：所有基于 .NET 的业务后端，在接到“接入 Authentik / 增加登录权限 / 实现 RBAC”任务时，**必须直接使用 `RemMai.Rmdl.Auth`**，不得自行编写重复的 OAuth HTTP 请求、JWT 解析或自制密码哈希代码。

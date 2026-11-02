@@ -6,8 +6,9 @@ This project uses RMDL. Before changing files:
 2. Read `vendor/rmdl/AGENTS.md`, `vendor/rmdl/RMDL.md` and the relevant contracts under `vendor/rmdl/docs/`. The local copy/submodule must be pinned to a reviewed RMDL version.
 3. For UI changes, inspect the installed `@OWNER/rmdl-ui` exports and `vendor/rmdl/registry/components.json`. Reuse approved, published public components, and never implement a parallel design system.
    - Zero-Slop Rule: Strictly forbid echoing user prompts or adding "Feature Overview", "How to use", or promotional cards at the bottom/margins. Build a dense operational console, not a marketing landing page.
-4. Scope changes to the requested business feature. Never edit `vendor/rmdl`, package policy, locked decisions, golden visual baselines, or the RMDL UI package without express owner authorization.
-5. Run the actual project static gate, typecheck, lint, tests, build and relevant visual tests. Report PASS/FAIL/NOT RUN truthfully.
-6. Pass this policy, scope and acceptance criteria explicitly to all child agents.
+4. For .NET backend authentication/authorization (Local RBAC or Authentik OAuth/OIDC), use `vendor/rmdl/packages/dotnet/RemMai.Rmdl.Auth` directly. Do not hand-roll custom OAuth/JWT flows. Configure via `appsettings.json` under `Auth` and map via `AddRmdlAuth()` & `MapRmdlAuthEndpoints()`.
+5. Scope changes to the requested business feature. Never edit `vendor/rmdl`, package policy, locked decisions, golden visual baselines, or the RMDL UI package without express owner authorization.
+6. Run the actual project static gate, typecheck, lint, tests, build and relevant visual tests. Report PASS/FAIL/NOT RUN truthfully.
+7. Pass this policy, scope and acceptance criteria explicitly to all child agents.
 
 When instructions conflict, stop the affected action and ask the project owner to approve the exception. Agent-authored ADRs are not owner approval.
