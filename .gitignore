@@ -15,3 +15,12 @@ Thumbs.db
 *.p12
 *.pfx
 .npmrc.local
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
