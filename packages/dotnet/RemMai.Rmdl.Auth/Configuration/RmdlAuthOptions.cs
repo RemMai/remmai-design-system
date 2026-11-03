@@ -36,12 +36,12 @@ public class RmdlAuthOptions
 public class AuthentikOptions
 {
     /// <summary>
-    /// Authentik 服务器根地址，例如 https://oauth.20000114.xyz
+    /// Authentik 服务器根地址，例如 https://auth.example.com
     /// </summary>
     public string Authority { get; set; } = string.Empty;
 
     /// <summary>
-    /// Authentik 中分配给应用的 Application Slug，例如 shenling-spider
+    /// Authentik 中分配给应用的 Application Slug，例如 sample-app
     /// </summary>
     public string ApplicationSlug { get; set; } = string.Empty;
 
@@ -56,7 +56,7 @@ public class AuthentikOptions
     public string ClientSecret { get; set; } = string.Empty;
 
     /// <summary>
-    /// 后端回调或前端回调地址，例如 https://lpnews.20000112.xyz/auth/callback
+    /// 后端回调或前端回调地址，例如 https://console.example.com/auth/callback
     /// </summary>
     public string RedirectUri { get; set; } = string.Empty;
 
@@ -66,7 +66,7 @@ public class AuthentikOptions
     public string Scopes { get; set; } = "openid email profile";
 
     /// <summary>
-    /// 映射为系统管理员的 Authentik 组名（例如 leapmotor-admins 或 authentik Admins）
+    /// 映射为系统管理员的 Authentik 组名（例如 authentik-admins 或 administrators）
     /// </summary>
     public string AdminGroup { get; set; } = "admin";
 

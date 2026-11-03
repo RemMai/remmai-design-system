@@ -52,17 +52,17 @@ public class AuthServiceTests : IDisposable
     {
         var options = new AuthentikOptions
         {
-            Authority = "https://oauth.20000114.xyz",
-            ApplicationSlug = "shenling-spider",
-            ClientId = "haB7DH33IGKPEu12a0nUhwyuYEHBcyAVZvjbniuC",
+            Authority = "https://auth.example.com",
+            ApplicationSlug = "sample-app",
+            ClientId = "test-client-id",
             ClientSecret = "secret",
-            RedirectUri = "https://lpnews.20000112.xyz/auth/callback"
+            RedirectUri = "https://console.example.com/auth/callback"
         };
 
-        Assert.Equal("https://oauth.20000114.xyz/application/o/authorize/", options.GetAuthorizeEndpoint());
-        Assert.Equal("https://oauth.20000114.xyz/application/o/token/", options.GetTokenEndpoint());
-        Assert.Equal("https://oauth.20000114.xyz/application/o/userinfo/", options.GetUserInfoEndpoint());
-        Assert.Equal("https://oauth.20000114.xyz/application/o/shenling-spider/", options.GetIssuer());
+        Assert.Equal("https://auth.example.com/application/o/authorize/", options.GetAuthorizeEndpoint());
+        Assert.Equal("https://auth.example.com/application/o/token/", options.GetTokenEndpoint());
+        Assert.Equal("https://auth.example.com/application/o/userinfo/", options.GetUserInfoEndpoint());
+        Assert.Equal("https://auth.example.com/application/o/sample-app/", options.GetIssuer());
     }
 
     [Fact]
@@ -112,11 +112,11 @@ public class AuthServiceTests : IDisposable
             Mode = "AuthentikOauth",
             Authentik = new AuthentikOptions
             {
-                Authority = "https://oauth.20000114.xyz",
-                ApplicationSlug = "shenling-spider",
+                Authority = "https://auth.example.com",
+                ApplicationSlug = "sample-app",
                 ClientId = "test-client",
                 ClientSecret = "test-secret",
-                RedirectUri = "https://lpnews.20000112.xyz/auth/callback"
+                RedirectUri = "https://console.example.com/auth/callback"
             }
         };
 

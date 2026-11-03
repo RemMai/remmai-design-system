@@ -41,7 +41,7 @@
    - 当系统处于 Authentik 模式且**尚无任何已激活的 Authentik 管理员**时：
    - **第一个**成功完成 Authentik 授权登录的用户，系统自动将其分配为 `admin` 角色（首登立为管理员）。
 3. **角色与组同步机制**：
-   - **方案 1（Authentik 组同步，推荐）**：系统读取 OIDC UserInfo / Token 中的 `groups` 声明。如果 Authentik 中的 Group 名称（如 `leapmotor-admins` 或 `admin`）与本地系统的 `AppRole.Code` 匹配，自动为用户刷新赋予该角色。
+   - **方案 1（Authentik 组同步，推荐）**：系统读取 OIDC UserInfo / Token 中的 `groups` 声明。如果 Authentik 中的 Group 名称（如 `authentik-admins` 或 `admin`）与本地系统的 `AppRole.Code` 匹配，自动为用户刷新赋予该角色。
    - **方案 2（本地自管）**：Authentik 仅负责证实用户身份（AuthN），用户登录后在业务系统后台的角色分配页面由管理员指派业务角色（AuthZ）。
 
 ---
@@ -239,7 +239,7 @@ public static RouteHandlerBuilder RequirePermission(this RouteHandlerBuilder bui
 </ItemGroup>
 ```
 
-### 2. 业务项目 `appsettings.json` 配置示例（以零跑采集 `lpnews.20000112.xyz` / Authentik Provider 2 为例）
+### 2. 业务项目 `appsettings.json` 配置示例（以控制台业务系统 `console.example.com` / Authentik Provider 为例）
 
 业务项目**只需要在 `appsettings.json` 中填写参数**，其余逻辑全部由组件库自动托管：
 
@@ -249,15 +249,15 @@ public static RouteHandlerBuilder RequirePermission(this RouteHandlerBuilder bui
     "Mode": "AuthentikOauth",
     "TokenExpiryDays": 7,
     "AdminUsername": "admin",
-    "AdminDefaultPassword": "Admin5677..",
+    "AdminDefaultPassword": "ChangeMe123!",
     "Authentik": {
-      "Authority": "https://oauth.20000114.xyz",
-      "ApplicationSlug": "shenling-spider",
-      "ClientId": "haB7DH33IGKPEu12a0nUhwyuYEHBcyAVZvjbniuC",
-      "ClientSecret": "I9ocKgBfZxa2ecka5rTIiZ3IitZAuHzluRiLy9rfsXvC9DmrnFt4fQinTqUACwkS4kx8ZXJJH6GHIccc26nSasvCYSkM8oLL47dZSQSIztrdmuD5o09uoSC850r2j7yi",
-      "RedirectUri": "https://lpnews.20000112.xyz/auth/callback",
+      "Authority": "https://auth.example.com",
+      "ApplicationSlug": "sample-app",
+      "ClientId": "your-authentik-client-id",
+      "ClientSecret": "your-authentik-client-secret",
+      "RedirectUri": "https://console.example.com/auth/callback",
       "Scopes": "openid email profile",
-      "AdminGroup": "leapmotor-admins",
+      "AdminGroup": "authentik-admins",
       "AutoBootstrapFirstUserAsAdmin": true
     }
   }
