@@ -113,9 +113,14 @@ export function AppEmptyState({
       <p className="rmdl-empty__description">{description}</p>
       {action ? (
         <div>
-          <Button color="primary" size="sm" onPress={action.onClick}>{action.label}</Button>
+          <Button variant="primary" size="sm" onClick={action.onClick}>{action.label}</Button>
         </div>
       ) : null}
     </div>
   );
+}
+
+/** HeroUI v3 button contract; variants should be governed centrally. */
+export function AppButton(props: React.ComponentProps<typeof Button>) {
+  return <Button {...props} />;
 }
