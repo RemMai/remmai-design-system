@@ -22,7 +22,7 @@ const allowed = Object.freeze({
   frontendFramework: ['vite', 'next', 'none'],
   backendLanguage: ['dotnet', 'java', 'python', 'node', 'none'],
   productionDatabase: ['postgresql', 'mariadb', 'sqlite', 'none'],
-  deployment: ['docker', 'linux', 'windows', 'hybrid', 'oss-static'],
+  deployment: ['docker', 'linux', 'windows', 'hybrid', 'caddy-static', 'nginx-static', 'cloudflare-pages', 'oss-static', 'not-applicable'],
   migrationStrategy: ['not-applicable', 'incremental', 'rewrite'],
 });
 const ormDefaults = Object.freeze({dotnet:'freesql', java:'hibernate', python:'sqlalchemy', node:'drizzle', none:'none'});
@@ -76,6 +76,15 @@ function validateSelection(config) {
   }
   if (s.backendLanguage === 'none' && s.productionDatabase !== 'none') err(errors, '无后端项目应将生产数据库选为 none');
   if (s.backendLanguage !== 'none' && s.productionDatabase === 'none') err(errors, '有后端项目必须明确选择生产数据库');
+  const backendDeployments = ['docker', 'linux', 'windows', 'hybrid'];
+  const staticDeployments = ['caddy-static', 'nginx-static', 'cloudflare-pages', 'oss-static'];
+  if (s.backendLanguage === 'none' && s.frontendMode === 'none' && s.deployment !== 'not-applicable') {
+    err(errors, '无前端、无后端项目应将 deployment 设为 not-applicable');
+  } else if (s.backendLanguage === 'none' && s.frontendMode !== 'none' && !staticDeployments.includes(s.deployment)) {
+    err(errors, '无后端 Web 项目必须选择静态托管目标：Caddy、Nginx、Cloudflare Pages 或 OSS');
+  } else if (s.backendLanguage !== 'none' && !backendDeployments.includes(s.deployment)) {
+    err(errors, '有后端项目必须选择 Docker、Linux、Windows 或混合部署');
+  }
   if (config.governance?.state !== 'locked') err(errors, '项目未锁定：必须先完成用户审批（draft 不可交付）');
   if (!String(config.governance?.approvedBy || '').trim()) err(errors, '缺少治理审批者 approvedBy');
   if (!String(config.governance?.approvalReference || '').trim()) err(errors, '缺少可追溯审批记录 approvalReference');
@@ -262,9 +271,14 @@ async function init(root, operation) {
     const productionDatabase=backendLanguage==='none'?'none':await choose(rl,'生产数据库',[
       'postgresql — 默认推荐','mariadb — MariaDB','sqlite — 适合明确轻量单机产品',
     ]);
-    const deployment=await choose(rl,'部署形式',[
-      'docker — 容器化','linux — Linux 原生','windows — Windows 原生','hybrid — 混合',
-    ]);
+    const deployment=backendLanguage==='none'
+      ? frontendMode==='none'?'not-applicable':await choose(rl,'静态网页托管目标（不需要后端运行环境）',[
+        'caddy-static — 自托管 Caddy','nginx-static — 自托管 Nginx',
+        'cloudflare-pages — Cloudflare Pages','oss-static — OSS 静态网站托管',
+      ])
+      : await choose(rl,'后端应用部署形式',[
+        'docker — 容器化','linux — Linux 原生','windows — Windows 原生','hybrid — 混合',
+      ]);
     const migrationStrategy=operation==='new'?'not-applicable':await choose(rl,'重构迁移策略',[
       'incremental — 渐进迁移，默认推荐','rewrite — 完整重写（需额外风险评估）',
     ]);

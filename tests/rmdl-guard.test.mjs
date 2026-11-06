@@ -91,6 +91,7 @@ test('static-html tool validates token stylesheet without requiring a JS toolcha
   manifest.selection.backendLanguage='none';
   manifest.selection.orm='none';
   manifest.selection.productionDatabase='none';
+  manifest.selection.deployment='oss-static';
   fs.writeFileSync(path.join(root,'rmdl.project.json'),JSON.stringify(manifest));
   fs.rmSync(web,{recursive:true,force:true});
   fs.mkdirSync(path.join(web,'assets'),{recursive:true});
@@ -106,12 +107,22 @@ test('static-html requires the RMDL token stylesheet reference',()=>{
   manifest.selection.backendLanguage='none';
   manifest.selection.orm='none';
   manifest.selection.productionDatabase='none';
+  manifest.selection.deployment='oss-static';
   fs.writeFileSync(path.join(root,'rmdl.project.json'),JSON.stringify(manifest));
   fs.rmSync(web,{recursive:true,force:true});
   fs.mkdirSync(path.join(web,'assets'),{recursive:true});
   fs.writeFileSync(path.join(web,'index.html'),'<main>Tool</main>');
   fs.writeFileSync(path.join(web,'assets/rmdl-tokens.css'),'');
   assert.match(run(root).stderr,/必须加载 assets\/rmdl-tokens\.css/);
+});
+test('backend-free web project must select static hosting',()=>{
+  const {root,manifest}=fixture();
+  manifest.selection.backendLanguage='none';
+  manifest.selection.orm='none';
+  manifest.selection.productionDatabase='none';
+  manifest.selection.deployment='docker';
+  fs.writeFileSync(path.join(root,'rmdl.project.json'),JSON.stringify(manifest));
+  assert.match(run(root).stderr,/无后端 Web 项目必须选择静态托管目标/);
 });
 test('redundant AI promotional slop in UI is blocked',()=>{
   const {root,web}=fixture();

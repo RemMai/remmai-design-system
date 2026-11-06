@@ -20,7 +20,7 @@
         "backendLanguage": {"enum": ["dotnet", "java", "python", "node", "none"]},
         "orm": {"enum": ["freesql", "efcore", "hibernate", "sqlalchemy", "drizzle", "none"]},
         "productionDatabase": {"enum": ["postgresql", "mariadb", "sqlite", "none"]},
-        "deployment": {"enum": ["docker", "linux", "windows", "hybrid", "oss-static"]},
+        "deployment": {"enum": ["docker", "linux", "windows", "hybrid", "caddy-static", "nginx-static", "cloudflare-pages", "oss-static", "not-applicable"]},
         "migrationStrategy": {"enum": ["not-applicable", "incremental", "rewrite"]}
       }
     },
