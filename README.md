@@ -53,7 +53,7 @@
 
 **owner = 你本人**。设计或技术栈决策不能由 Agent 推定为已批准。初始化/全局重构时先出选型表；现有业务项目按其 `rmdl.project.json` 锁定；公共组件必须经过提案 → 去业务化 → 展示与测试 → 你认可 → 版本发布的流程。
 
-**前端统一原则**：React / TypeScript / Bun / HeroUI v3 / Tailwind v4 / Lucide / RMDL Tokens；所有后台的基础布局和组件来自 RMDL 包，不允许每个项目自己建第二套设计系统。具体选择以主规范的强制条款和例外审批为准。
+**前端统一原则**：工程化前端使用 React / TypeScript / Bun / HeroUI v3 / Tailwind v4 / Lucide / RMDL Tokens；轻量 Tool 可经选型使用原生 HTML/CSS/JS 直接静态托管。两种模式共用 RMDL 视觉契约和 Tokens，不允许另建风格体系；工程化构建产物也可部署 OSS。
 
 ## 当前能力边界（不要让 AI 虚报完成）
 

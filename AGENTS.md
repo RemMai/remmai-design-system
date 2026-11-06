@@ -20,7 +20,7 @@
 
 ## 2. 不可违反的工程红线
 
-1. Web 前端统一 React、TypeScript strict、Bun、HeroUI v3、Tailwind v4、Lucide、RMDL Tokens；前端形态 (Vite/Next 等) 由已批准的项目选型决定。
+1. 工程化 Web 前端统一 React、TypeScript strict、Bun、HeroUI v3、Tailwind v4、Lucide、RMDL Tokens；经选型锁定的轻量 `static-html` 页面可使用原生 HTML/CSS/JS，但仍须遵守 RMDL 视觉契约并使用锁定版本 Tokens。前端形态 (Vite/Next 等) 由已批准的项目选型决定。
 2. 所有基础布局、页面容器、表格、表单、弹窗等，优先使用 RMDL 已批准且已发布的**同一共享包版本**。不准创建另一套设计系统或引入 Ant Design/MUI/Chakra/Mantine/Bootstrap/PrimeReact 等第二套 UI。
 3. 业务页面不得私自复制公共组件源码、使用深层 CSS/`!important` 越权覆写公共设计、硬编码另一套全局颜色/间距/字号等。
 4. 初始化/整体重构：**先审计/展示选型 → 用户明确批准 → 锁定配置 → 执行**。后端语言可选，但必须满足层次边界；.NET ORM 以 FreeSql + CodeFirst 为默认，EF Core 需例外审批，Dapper 仅辅助查询。

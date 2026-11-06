@@ -83,6 +83,36 @@ test('HeroUI styles imported before Tailwind are blocked',()=>{
     '@import \"@heroui/styles\";\n@import \"tailwindcss\";\n@import \"@remmai/rmdl-tokens/colors.css\";');
   assert.match(run(root).stderr,/必须在 TailwindCSS 之后/);
 });
+test('static-html tool validates token stylesheet without requiring a JS toolchain',()=>{
+  const {root,web,manifest}=fixture();
+  manifest.selection.productType='tool';
+  manifest.selection.frontendMode='static-html';
+  manifest.selection.frontendFramework='none';
+  manifest.selection.backendLanguage='none';
+  manifest.selection.orm='none';
+  manifest.selection.productionDatabase='none';
+  fs.writeFileSync(path.join(root,'rmdl.project.json'),JSON.stringify(manifest));
+  fs.rmSync(web,{recursive:true,force:true});
+  fs.mkdirSync(path.join(web,'assets'),{recursive:true});
+  fs.writeFileSync(path.join(web,'index.html'),'<link rel="stylesheet" href="assets/rmdl-tokens.css"><main>Tool</main>');
+  fs.writeFileSync(path.join(web,'assets/rmdl-tokens.css'),':root { --rmdl-bg-canvas: white; }');
+  assert.equal(run(root).status,0);
+});
+test('static-html requires the RMDL token stylesheet reference',()=>{
+  const {root,web,manifest}=fixture();
+  manifest.selection.productType='tool';
+  manifest.selection.frontendMode='static-html';
+  manifest.selection.frontendFramework='none';
+  manifest.selection.backendLanguage='none';
+  manifest.selection.orm='none';
+  manifest.selection.productionDatabase='none';
+  fs.writeFileSync(path.join(root,'rmdl.project.json'),JSON.stringify(manifest));
+  fs.rmSync(web,{recursive:true,force:true});
+  fs.mkdirSync(path.join(web,'assets'),{recursive:true});
+  fs.writeFileSync(path.join(web,'index.html'),'<main>Tool</main>');
+  fs.writeFileSync(path.join(web,'assets/rmdl-tokens.css'),'');
+  assert.match(run(root).stderr,/必须加载 assets\/rmdl-tokens\.css/);
+});
 test('redundant AI promotional slop in UI is blocked',()=>{
   const {root,web}=fixture();
   fs.writeFileSync(path.join(web,'src/app/users/page.tsx'),

@@ -17,11 +17,12 @@ const FIXED = Object.freeze({
 });
 const allowed = Object.freeze({
   operation: ['new', 'refactor'],
-  productType: ['admin', 'data', 'portal', 'game', 'content', 'service'],
+  productType: ['admin', 'data', 'portal', 'game', 'content', 'tool', 'service'],
+  frontendMode: ['engineered', 'static-html', 'none'],
   frontendFramework: ['vite', 'next', 'none'],
   backendLanguage: ['dotnet', 'java', 'python', 'node', 'none'],
   productionDatabase: ['postgresql', 'mariadb', 'sqlite', 'none'],
-  deployment: ['docker', 'linux', 'windows', 'hybrid'],
+  deployment: ['docker', 'linux', 'windows', 'hybrid', 'oss-static'],
   migrationStrategy: ['not-applicable', 'incremental', 'rewrite'],
 });
 const ormDefaults = Object.freeze({dotnet:'freesql', java:'hibernate', python:'sqlalchemy', node:'drizzle', none:'none'});
@@ -50,8 +51,16 @@ function validateSelection(config) {
   for (const [key, value] of Object.entries(FIXED)) {
     if (config.fixed?.[key] !== value) err(errors, `fixed.${key} 必须为 ${value}`);
   }
-  if (s.productType === 'service' ? s.frontendFramework !== 'none' : s.frontendFramework === 'none') {
-    err(errors, '仅 service 类型可不启用 Web 前端；其他产品须选择 vite/next');
+  if (s.productType === 'service') {
+    if (s.frontendMode !== 'none' || s.frontendFramework !== 'none') err(errors, 'service 类型必须 frontendMode=none 且 frontendFramework=none');
+  } else if (s.frontendMode === 'none') {
+    err(errors, '非 service 类型必须选择前端实现模式');
+  } else if (s.frontendMode === 'static-html') {
+    if (s.productType !== 'tool') err(errors, 'static-html 模式仅适用于 tool 类型轻量网页');
+    if (s.frontendFramework !== 'none') err(errors, 'static-html 模式必须 frontendFramework=none');
+    if (s.backendLanguage !== 'none' || s.productionDatabase !== 'none') err(errors, 'static-html 模式必须选择无后端和无生产数据库');
+  } else if (s.frontendFramework === 'none') {
+    err(errors, 'engineered 模式必须选择 vite 或 next');
   }
   if (s.operation === 'new' ? s.migrationStrategy !== 'not-applicable' : s.migrationStrategy === 'not-applicable') {
     err(errors, '新建项目 migrationStrategy=not-applicable；重构必须选 incremental/rewrite');
@@ -86,8 +95,27 @@ function traverse(dir, callback, relRoot) {
     else if (entry.isFile()) callback(full, path.relative(relRoot, full).replaceAll(path.sep, '/'));
   }
 }
+function checkStaticWeb(root, errors) {
+  const web = path.join(root, 'apps/web');
+  const htmlPath = path.join(web, 'index.html');
+  if (!fs.existsSync(htmlPath)) { err(errors, 'static-html 缺少 apps/web/index.html'); return; }
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  if (!/href=["'](?:\.\/)?assets\/rmdl-tokens\.css["']/.test(html)) {
+    err(errors, 'static-html index.html 必须加载 assets/rmdl-tokens.css');
+  }
+  const tokenCss = path.join(web, 'assets/rmdl-tokens.css');
+  if (!fs.existsSync(tokenCss)) err(errors, 'static-html 缺少 apps/web/assets/rmdl-tokens.css（应来自锁定版本的 RMDL Tokens）');
+  traverse(web, (file, rel) => {
+    if (!/\.css$/.test(file) || rel === 'assets/rmdl-tokens.css') return;
+    const css = fs.readFileSync(file, 'utf8');
+    if (/#(?:[\da-f]{3,8})\b|\b(?:rgb|rgba|hsl|hsla|oklch)\s*\(/i.test(css)) {
+      err(errors, `${rel} static-html CSS 不得硬编码颜色，应使用 --rmdl-* Token`);
+    }
+  }, web);
+}
 function checkWeb(root, config, errors) {
   if (config.selection.productType === 'service') return;
+  if (config.selection.frontendMode === 'static-html') return checkStaticWeb(root, errors);
   const web = path.join(root, 'apps/web');
   const pkgPath = path.join(web, 'package.json');
   if (!fs.existsSync(pkgPath)) { err(errors, '缺少 apps/web/package.json（未完成前端初始化）'); return; }
@@ -219,12 +247,15 @@ async function init(root, operation) {
     if (!projectName) throw new Error('缺少项目名称');
     const productType=await choose(rl,'产品类型',[
       'admin — 管理后台','data — 数据平台','portal — 用户门户','game — 游戏管理/门户',
-      'content — 博客/内容站','service — 纯后端服务（无 Web）',
+      'content — 博客/内容站','tool — 轻量网页/单页小工具','service — 纯后端服务（无 Web）',
     ]);
-    const frontendFramework=productType==='service'?'none':await choose(rl,'Web 构建/渲染框架（组件外观不会改变）',[
-      'vite — 交互型后台默认推荐','next — 公开内容/SEO/SSR 推荐',
+    const frontendMode=productType==='service'?'none':await choose(rl,'前端实现模式（两种模式均遵守 RMDL 视觉标准）',[
+      'engineered — React 工程化，可构建为 OSS 静态产物','static-html — 原生 HTML/CSS/JS，目录直接上传 OSS（仅 Tool）',
     ]);
-    const backendLanguage=await choose(rl,'后端语言（由所有者决定）',[
+    const frontendFramework=frontendMode==='none'||frontendMode==='static-html'?'none':await choose(rl,'Web 构建/渲染框架',[
+      'vite — 静态构建/交互型前端','next — 公开内容/SEO/SSR（静态 OSS 部署需确认导出兼容）',
+    ]);
+    const backendLanguage=frontendMode==='static-html'?'none':await choose(rl,'后端语言（由所有者决定）',[
       'dotnet — C# / ASP.NET Core','java — Java','python — Python',
       'node — Node.js + TypeScript','none — 无后端',
     ]);
@@ -239,7 +270,7 @@ async function init(root, operation) {
     ]);
     const config={
       $schema:'./policy/rmdl-project.schema.json',standardVersion:VERSION,projectName,
-      selection:{operation,productType,frontendFramework,backendLanguage,
+      selection:{operation,productType,frontendMode,frontendFramework,backendLanguage,
         orm:ormDefaults[backendLanguage],productionDatabase,deployment,migrationStrategy},
       fixed:{...FIXED},
       governance:{state:'draft',approvedBy:null,approvalReference:null,approvedAt:null},

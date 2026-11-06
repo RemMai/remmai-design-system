@@ -11,15 +11,16 @@
     "selection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["operation", "productType", "frontendFramework", "backendLanguage", "orm", "productionDatabase", "deployment", "migrationStrategy"],
+      "required": ["operation", "productType", "frontendMode", "frontendFramework", "backendLanguage", "orm", "productionDatabase", "deployment", "migrationStrategy"],
       "properties": {
         "operation": {"enum": ["new", "refactor"]},
-        "productType": {"enum": ["admin", "data", "portal", "game", "content", "service"]},
+        "productType": {"enum": ["admin", "data", "portal", "game", "content", "tool", "service"]},
+        "frontendMode": {"enum": ["engineered", "static-html", "none"]},
         "frontendFramework": {"enum": ["vite", "next", "none"]},
         "backendLanguage": {"enum": ["dotnet", "java", "python", "node", "none"]},
         "orm": {"enum": ["freesql", "efcore", "hibernate", "sqlalchemy", "drizzle", "none"]},
         "productionDatabase": {"enum": ["postgresql", "mariadb", "sqlite", "none"]},
-        "deployment": {"enum": ["docker", "linux", "windows", "hybrid"]},
+        "deployment": {"enum": ["docker", "linux", "windows", "hybrid", "oss-static"]},
         "migrationStrategy": {"enum": ["not-applicable", "incremental", "rewrite"]}
       }
     },

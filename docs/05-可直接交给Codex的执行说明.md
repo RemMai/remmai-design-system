@@ -4,7 +4,7 @@
 
 > 请以仓库根目录 `AGENTS.md` 和 `RMDL.md` 为强制开发标准，并将这些约束传递给全部子 Agent。
 > 先判断我的任务是新建、整体重构还是日常开发。
-> 新建和重构时不要直接写代码：先读取 `docs/01-选型与审批协议.md`，给我展示全部要我选择的技术选型；所有 Web 产品共同的 React/TS strict/Bun/HeroUI v3/Tailwind v4/RMDL UI 不能作为可自由改动项。
+> 新建和重构时不要直接写代码：先读取 `docs/01-选型与审批协议.md`，给我展示全部要我选择的技术选型；工程化 Web 固定使用 React/TS strict/Bun/HeroUI v3/Tailwind v4/RMDL UI。轻量 Tool 可选择原生静态页，但仍遵守相同的 RMDL 视觉契约。
 > 得到我确认后生成 `rmdl.project.json` 并交由我审核；未经审批，不准代填 locked/approvedBy 或安装框架。
 > 开始写代码后，页面必须来自统一的 `@remmai/rmdl-ui`，遵循 `docs/02-前端视觉与页面契约.md`，不得自行造基础 UI 风格、添加夸张页头/多余卡片/长段说明。
 > 每项完成后必须给出 RMDL guard、typecheck、lint、测试及视觉截图的实际结果；不能运行的项目要如实说明。

@@ -45,8 +45,8 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 ## 0.2 v0.3 强制治理入口（优先于旧版弹性建议）
 
 1. **新项目 / 整体重构必须先选择、后写代码**。AI 必须向项目所有者展示选择矩阵并等待回复；不能用“默认值”跳过交互。`rmdl.project.json` 从草稿转为锁定后，所有工作者必须遵守。详见 `docs/01-选型与审批协议.md`。
-2. **只要存在 Web 前端，技术底座不得因后端语言而变化**：React + TypeScript strict + Bun + HeroUI v3 + Tailwind v4 + Lucide + RMDL Tokens + `@remmai/rmdl-ui`。Next.js 与 Vite 的选择按渲染需求审批，但不得形成两套 UI。
-3. **所有 Web 系统共享一个发布版本的 UI 核心包、页面模式与截图基线**。管理后台的框架、页头、工具栏、表格、表单、状态都由公共 UI 包或统一模板提供；业务可以不同，视觉不能任意改。
+2. **Web 前端须锁定实现模式**：工程化模式使用 React + TypeScript strict + Bun + HeroUI v3 + Tailwind v4 + Lucide + RMDL Tokens + `@remmai/rmdl-ui`；原生静态页模式可用 HTML/CSS/JS/图片，无需框架和构建工具，但仍须遵守相同的 RMDL 视觉契约。原生静态页面向可直接托管的轻量小工具，不用于复杂后台。
+3. **两种模式共享 RMDL 视觉标准，工程交付方式不同**。工程化项目的静态构建产物与原生静态页都必须可部署至 OSS 静态网站托管；需要 SSR、服务端逻辑或 API 的功能不能假定 OSS 静态托管即可运行。管理后台的框架、页头、工具栏、表格、表单、状态仍由公共 UI 包或统一模板提供。
 4. **红线禁止 Agent 自行例外**：新增第二套 UI 库、修改全局主色/字体/圆角、后端更换主 ORM、在重构中扩大改造范围，必须停下申请所有者审批，并记录 ADR。
 5. **验证失败就停，不允许降级标准**：`scripts/rmdl.mjs check`、类型检查、Lint、测试、Visual Regression 均为交付门禁；不得自动关闭检查项、删测试、刷新所有截图来宣称通过。
 6. **机器门禁与人的权限同时生效**：配置文件及脚本可发现大量违规，但不能证明提交者真的是所有者；因此生产仓库还应配置分支保护、必需 CI、CODEOWNERS/指定审批者。
@@ -61,8 +61,8 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 
 | 层面 | 默认技术 | 说明 |
 |---|---|---|
-| Web | React + TypeScript（strict） | 持续使用受支持的稳定版本 |
-| Web 框架 | Next.js App Router | 面向公开 SEO 页面和具有服务端渲染需要的项目；纯内网控制台可评估 React + Vite |
+| 工程化 Web | React + TypeScript（strict） | 持续使用受支持的稳定版本；静态构建可部署 OSS |
+| Web 框架 | Next.js App Router / Vite / 无构建框架 | Next.js 用于 SEO/SSR；Vite 用于纯客户端应用；轻量 Tool 可选原生静态页 |
 | JavaScript 工具链 | **Bun** | 默认包管理、脚本、测试及可兼容场景下的运行时；使用 `bun.lock` |
 | UI | **HeroUI v3** + Tailwind CSS v4 | 统一组件原语与主题；项目不得随意叠加第二套通用组件库 |
 | 图表 | **EvilCharts** | 低/中密度图表优先其 Recharts 实现，高频/大数据优先其 ECharts 实现 |
@@ -109,7 +109,7 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 - .NET 默认使用 FreeSql + CodeFirst，备选 EF Core 需要先批准 ADR；Dapper 只能做辅助查询。
 - Java 默认 Hibernate/JPA 实体映射 + 可审计迁移；Python 默认 SQLAlchemy + Alembic；Node 后端默认 TypeScript + Drizzle；生产均需要版本化数据库迁移，不以开发态自动同步代替。
 - 不允许以“某个后端语言更适合 Vue/Angular”作为变更 Web 前端栈的理由。
-- 只有明确的**非 Web** 客户端（原生移动/桌面）及无 Web 的纯服务，才能不使用 React Web 栈；不得以此绕过已有 Web 应用统一规范。
+- 只有明确锁定的 `static-html` 轻量 Tool、**非 Web** 客户端（原生移动/桌面）及无 Web 的纯服务，才能不使用 React Web 栈；静态页仍遵守 RMDL 视觉契约，不得借此另建风格体系。
 
 ---
 
@@ -694,7 +694,7 @@ remmai-product/
 
 ### 12.2 编码阶段
 
-- MUST：任何 Web 前端遵守 React + TS strict + Bun + HeroUI v3 + RMDL；后端遵守已批准的语言选型；选择 .NET 时默认 FreeSql CodeFirst。
+- MUST：工程化 Web 遵守 React + TS strict + Bun + HeroUI v3 + RMDL；锁定 `static-html` 的轻量 Tool 遵守 RMDL 视觉契约与 Tokens；后端遵守已批准的语言选型；选择 .NET 时默认 FreeSql CodeFirst。
 - MUST：保持 Service/Application 与 API/Host 分离。
 - MUST：前端菜单按有效 RBAC 渲染，后端实施真实授权。
 - MUST：复用统一发布的 RMDL Tokens 和 `@remmai/rmdl-ui` 组件，禁止重造基础 UI 风格。
@@ -720,7 +720,7 @@ remmai-product/
 - [ ] Domain/Application/Infrastructure/Host 边界清晰且依赖检查通过。
 - [ ] 已按所选后端语言使用主 ORM 和 CodeFirst；若为 .NET 则默认 FreeSql；开发环境 SQLite 可初始化（适用时）。
 - [ ] 生产 Provider、迁移流程与集成测试已验证。
-- [ ] 若存在 Web 前端，React/TypeScript strict/Bun/HeroUI v3/Tailwind v4/RMDL UI 包为统一核心；EvilCharts/Morphicons/Motion 按需使用。
+- [ ] 工程化 Web 使用 React/TypeScript strict/Bun/HeroUI v3/Tailwind v4/RMDL UI 包；`static-html` Tool 使用 RMDL Tokens 和视觉契约；EvilCharts/Morphicons/Motion 按需使用。
 - [ ] 统一 RMDL Tokens，Light/Dark 和响应式表现正常。
 - [ ] RBAC 同时控制前端表现与后端真实权限。
 - [ ] 公开页面 SEO 或私有页面 noindex 策略正确。

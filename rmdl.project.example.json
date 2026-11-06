@@ -5,6 +5,7 @@
   "selection": {
     "operation": "new",
     "productType": "admin",
+    "frontendMode": "engineered",
     "frontendFramework": "vite",
     "backendLanguage": "dotnet",
     "orm": "freesql",
