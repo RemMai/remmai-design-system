@@ -15,14 +15,15 @@ function options(args) {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--help' || arg === '-h') { result.help = true; continue; }
-    if (!['--root', '--repository', '--ref', '--proxy', '--agent', '--action'].includes(arg)) throw new Error(`未知参数：${arg}`);
+    if (!['--root', '--repository', '--ref', '--proxy', '--agent', '--action', '--checks'].includes(arg)) throw new Error(`未知参数：${arg}`);
     const value = args[++i];
     if (!value || value.startsWith('-')) throw new Error(`${arg} 缺少有效参数`);
     result[arg.slice(2)] = value;
   }
   if (result.proxy && !/^https?:\/\//.test(result.proxy)) throw new Error('--proxy 使用 http:// 或 https:// URL');
   if (!['opencode', 'skip'].includes(result.agent)) throw new Error('--agent 只能为 opencode 或 skip');
-  if (result.action && !['init', 'update'].includes(result.action)) throw new Error('--action 只能为 init 或 update');
+  if (result.action && !['init', 'update', 'check'].includes(result.action)) throw new Error('--action 只能为 init、update 或 check');
+  if (result.checks && !['standard', 'project'].includes(result.checks)) throw new Error('--checks 只能为 standard 或 project');
   return result;
 }
 
@@ -217,8 +218,82 @@ function update(config) {
   console.log(`\n标准${previous === next ? '已是所选版本' : '已更新'}：${previous} → ${next}`);
   console.log(`Agent 规则：${config.agent === 'opencode' ? 'OpenCode（保留其他配置）' : '跳过（现有规则文件保留）'}。`);
   console.log('业务选型与产品版本保持原值；变更尚未暂存或提交。');
-  console.log('请审查 git diff，然后运行：node vendor/rmdl/scripts/rmdl.mjs check --root .');
+  console.log('请审查 git diff；可在菜单中选择「检查项目」或「更新并检查」验证，无需手敲命令。');
   console.log('新增标准要求可能需要迁移项目配置；静态检查与真实工程测试通过后再提交。');
+}
+
+/** Run a local tool with arguments; never build a shell string from project data. */
+function runTool(executable, args, cwd) {
+  // Windows npm is a .cmd shim; Node requires a shell for it. Arguments here are fixed script names.
+  const result = spawnSync(executable, args, {cwd, encoding: 'utf8', windowsHide: true, shell: /\.cmd$/i.test(executable)});
+  if (result.error) return {ok: false, output: result.error.message};
+  return {ok: result.status === 0, output: `${result.stdout}${result.stderr}`.trim()};
+}
+
+function firstLines(text, count = 6) {
+  return text.split(/\r?\n/).filter(Boolean).slice(0, count).join(' | ');
+}
+
+function standardCheck(root) {
+  const script = path.join(root, 'vendor/rmdl/scripts/rmdl.mjs');
+  if (!fs.existsSync(script)) return {name: '标准门禁', status: 'FAIL', detail: '缺少 vendor/rmdl/scripts/rmdl.mjs，请先初始化或更新标准'};
+  const result = runTool(process.execPath, [script, 'check', '--root', root], root);
+  return {name: '标准门禁', status: result.ok ? 'PASS' : 'FAIL', detail: result.ok ? '静态策略通过（不代表视觉与真实构建通过）' : firstLines(result.output)};
+}
+
+/** Discover real project commands instead of assuming a layout that may not exist. */
+function findFiles(dir, predicate, maxDepth, depth = 0) {
+  if (depth > maxDepth || !fs.existsSync(dir)) return [];
+  const found = [];
+  for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
+    if (['node_modules', '.git', 'bin', 'obj', 'dist', 'build', 'vendor', 'artifacts'].includes(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) found.push(...findFiles(full, predicate, maxDepth, depth + 1));
+    else if (entry.isFile() && predicate(full)) found.push(full);
+  }
+  return found;
+}
+
+function projectChecks(root) {
+  const results = [];
+  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const packages = [root, path.join(root, 'apps/web')].filter(dir => fs.existsSync(path.join(dir, 'package.json')));
+  if (!packages.length) results.push({name: '前端工程检查', status: 'NOT RUN', detail: '未找到 package.json'});
+  for (const dir of packages) {
+    const label = path.relative(root, dir) || '.';
+    let scripts = {};
+    try { scripts = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).scripts ?? {}; }
+    catch (error) { results.push({name: `${label} package.json`, status: 'FAIL', detail: error.message}); continue; }
+    for (const script of ['typecheck', 'lint', 'test', 'build']) {
+      const name = `${label} npm run ${script}`;
+      if (!scripts[script]) { results.push({name, status: 'NOT RUN', detail: 'package.json 未定义该脚本'}); continue; }
+      const result = runTool(npm, ['run', script, '--silent'], dir);
+      results.push({name, status: result.ok ? 'PASS' : 'FAIL', detail: result.ok ? '' : firstLines(result.output)});
+    }
+  }
+  const solutions = findFiles(root, file => /\.(slnx|sln)$/i.test(file), 3);
+  if (!solutions.length) results.push({name: '.NET 构建', status: 'NOT RUN', detail: '未找到 .sln/.slnx'});
+  else if (!runTool('dotnet', ['--version'], root).ok) results.push({name: '.NET 构建', status: 'NOT RUN', detail: '未找到 dotnet CLI'});
+  else {
+    const result = runTool('dotnet', ['build', path.relative(root, solutions[0]), '-c', 'Release', '--nologo'], root);
+    results.push({name: '.NET 构建', status: result.ok ? 'PASS' : 'FAIL', detail: result.ok ? '' : firstLines(result.output)});
+  }
+  results.push({name: '视觉回归', status: 'NOT RUN', detail: '需项目 Playwright 配置与人工审查'});
+  return results;
+}
+
+function runChecks(root, mode) {
+  if (!fs.existsSync(root)) { console.error(`项目目录不存在：${root}`); return false; }
+  console.log(`\n正在检查：${root}`);
+  const results = [standardCheck(root)];
+  if (mode === 'project') results.push(...projectChecks(root));
+  console.log('\n检查结果：');
+  for (const item of results) console.log(`  [${item.status}] ${item.name}${item.detail ? ` — ${item.detail}` : ''}`);
+  const count = status => results.filter(item => item.status === status).length;
+  console.log(`\n汇总：PASS ${count('PASS')} / FAIL ${count('FAIL')} / NOT RUN ${count('NOT RUN')}`);
+  if (count('FAIL')) console.log('存在失败项；修复后重新检查，不要跳过或关闭门禁。');
+  else if (count('NOT RUN')) console.log('NOT RUN 项未验证，不能当作通过。');
+  return count('FAIL') === 0;
 }
 
 async function menu(config) {
@@ -230,12 +305,28 @@ async function menu(config) {
     if (answer.done) throw new Error('输入已结束，操作取消');
     return answer.value.trim();
   };
+  const chooseChecks = async (defaultMode) => {
+    for (;;) {
+      const choice = await ask(`检查范围：1. 仅标准门禁  2. 标准 + 工程检查（typecheck/lint/test/build/.NET）  0. 跳过 [${defaultMode === 'project' ? 2 : 1}]：`);
+      if (!choice) return defaultMode;
+      if (choice === '1') return 'standard';
+      if (choice === '2') return 'project';
+      if (choice === '0') return null;
+      console.log('请输入 0、1 或 2。');
+    }
+  };
   try {
     for (;;) {
-      console.log('\nRMDL 标准管理\n  1. 初始化标准\n  2. 更新标准\n  0. 退出');
+      console.log('\nRMDL 标准管理\n  1. 初始化标准\n  2. 更新标准\n  3. 检查项目\n  4. 更新并检查\n  0. 退出');
       const action = await ask('请选择：');
       if (action === '0') return;
-      if (!['1', '2'].includes(action)) { console.log('请输入 1、2 或 0。'); continue; }
+      if (!['1', '2', '3', '4'].includes(action)) { console.log('请输入 1、2、3、4 或 0。'); continue; }
+      if (action === '3') {
+        const root = (await ask(`项目目录 [${path.resolve(config.root)}]：`)) || config.root;
+        const mode = await chooseChecks('project');
+        if (mode) runChecks(path.resolve(root), mode);
+        continue;
+      }
       const root = (await ask(`项目目录 [${path.resolve(config.root)}]：`)) || config.root;
       let agent;
       while (!agent) {
@@ -245,7 +336,7 @@ async function menu(config) {
         else console.log('请输入 1 或 2。');
       }
       let suggested = config.ref ?? sourceRef(config.repository);
-      if (action === '2' && !config.ref) {
+      if (action !== '1' && !config.ref) {
         const record = readOptional(path.join(path.resolve(root), 'rmdl.bootstrap.json'));
         suggested = record ? JSON.parse(record).requestedRef ?? suggested : suggested;
       }
@@ -253,8 +344,11 @@ async function menu(config) {
       const proxy = (await ask(`HTTP 代理（空白使用当前 Git 设置）[${config.proxy ?? ''}]：`)) || config.proxy;
       const selected = options(['--action', action === '1' ? 'init' : 'update', '--root', root, '--agent', agent,
         '--repository', config.repository, '--ref', ref, ...(proxy ? ['--proxy', proxy] : [])]);
-      try { (selected.action === 'init' ? bootstrap : update)(selected); }
-      catch (error) { console.error(`RMDL 操作失败：${error.message}`); }
+      try {
+        (selected.action === 'init' ? bootstrap : update)(selected);
+        const mode = await chooseChecks(selected.action === 'update' || action === '4' ? 'project' : 'standard');
+        if (mode) runChecks(path.resolve(root), mode);
+      } catch (error) { console.error(`RMDL 操作失败：${error.message}`); }
     }
   } finally { rl.close(); }
 }
@@ -264,12 +358,16 @@ try {
   if (config.help) {
     console.log(`RMDL 标准管理（需要 Node.js 和 Git）
 启动菜单：node bootstrap.mjs
-直接执行：node bootstrap.mjs --action init|update [--root path] [--agent opencode|skip] [--ref tag|branch|commit] [--proxy http://host:port] [--repository URL]
+直接执行：node bootstrap.mjs --action init|update|check [--checks standard|project] [--root path] [--agent opencode|skip] [--ref tag|branch|commit] [--proxy http://host:port] [--repository URL]
+菜单提供：初始化标准 / 更新标准 / 检查项目 / 更新并检查。
+检查会运行标准门禁，并按项目实际存在的 package.json 脚本与 .NET 解决方案执行工程检查；缺失项报告 NOT RUN。
 Agent 规则默认 OpenCode，可选择跳过。初始化目标必须为空目录（允许当前单文件 rmdl.cmd 启动器）。
 默认仓库：${defaultRepository}
 从标准仓库运行时默认选择其分支（detached 时选择 commit）；单独下载脚本默认远端 HEAD。
 更新默认保持原标准引用；固定 commit/Tag 不会自动追新，换版本时显式选择新引用。
-仅接入/更新规则，不自动选择技术栈、不审批、不提交或推送业务仓库。`);
+仅接入/更新/检查规则，不自动选择技术栈、不审批、不提交或推送业务仓库。`);
+  } else if (config.action === 'check') {
+    if (!runChecks(path.resolve(config.root), config.checks ?? 'project')) process.exitCode = 1;
   } else if (config.action) (config.action === 'init' ? bootstrap : update)(config);
   else await menu(config);
 } catch (error) {

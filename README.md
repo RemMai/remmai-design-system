@@ -99,7 +99,7 @@ git push -u origin main
 node 'D:\Tools\remmai-design-system\scripts\bootstrap.mjs'
 ```
 
-菜单提供 **初始化标准 / 更新标准 / 退出**。选择操作后输入项目目录，Agent 规则可选 **OpenCode（默认）/ 跳过**，再选择标准分支/Tag/commit 和可选代理。默认值直接回车。独立启动器默认选择它所在的目录；已有业务仓库选择更新。
+菜单提供 **初始化标准 / 更新标准 / 检查项目 / 更新并检查 / 退出**。选择操作后输入项目目录，Agent 规则可选 **OpenCode（默认）/ 跳过**，再选择标准分支/Tag/commit 和可选代理。默认值直接回车。独立启动器默认选择它所在的目录；已有业务仓库选择更新。初始化或更新成功后，菜单会询问是否立即检查，无需再手敲命令。
 
 **初始化标准**要求目标为空目录（允许其中只有当前启动的 `rmdl.cmd`），或父目录已存在的新目录；会初始化业务 Git 仓库、把标准固定为 `vendor/rmdl` submodule，并写入来源记录 `rmdl.bootstrap.json`。当前启动器会保留并纳入暂存。选择 OpenCode 时安装根 `AGENTS.md` 和 `opencode.json`；选择跳过则不安装任何 Agent 入口。当前自动接入仅支持 OpenCode，其他 Agent 后续增加；既有兼容模板保留但不自动复制。
 
@@ -122,6 +122,15 @@ node 'D:\Tools\remmai-design-system\scripts\bootstrap.mjs'
 更新会保留业务 `rmdl.project.json`、VERSION 与 CHANGELOG，检查标准子模块的本地修改，合并 OpenCode 的 instructions 并保留其他设置。自定义修改过的 AGENTS.md 或另一份 JSONC 配置需要人工合并；可选择「跳过」仅更新标准，现有 Agent 文件不会被删除。更新只生成可审查的工作区变更，不暂存、不提交、不推送。
 
 完成后审查 `git diff`，运行 `node vendor/rmdl/scripts/rmdl.mjs check --root .` 和实际工程测试，按新标准迁移必要配置后再提交。详细参数、失败处理与回滚见 [10 业务项目接入](docs/10-业务项目接入.md#七标准管理脚本)。
+
+### 3. 直接检查项目
+
+菜单选择 **3. 检查项目**，或初始化/更新后按提示选择检查范围：
+
+1. **仅标准门禁**：运行 `vendor/rmdl/scripts/rmdl.mjs check`，快速验证选型锁、依赖、锁文件、版本绑定与 .NET 目标框架。
+2. **标准 + 工程检查**：在标准门禁后，按项目实际存在的命令依次执行 `npm run typecheck`、`lint`、`test`、`build`（根目录与 `apps/web` 有 `package.json` 时），以及 `dotnet build -c Release`（找到 `.sln`/`.slnx` 且本机有 dotnet 时）。
+
+结果逐项标记 **PASS / FAIL / NOT RUN** 并汇总。未定义的脚本、缺失的 dotnet 或未配置的视觉回归显示 NOT RUN，不会被当作通过；存在 FAIL 时命令返回非零。检查只读，不修改项目文件。视觉回归与人工页面审查仍需按项目配置单独执行。
 
 ## 仓库使用纪律
 

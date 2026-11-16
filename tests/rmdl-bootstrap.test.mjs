@@ -250,10 +250,79 @@ test('invalid agent values never initialize a directory', () => {
   assert.deepEqual(fs.readdirSync(destination), []);
 });
 
+function checkRun(destination, ...args) {
+  return spawnSync(process.execPath, [script, '--action', 'check', '--root', destination, ...args], {encoding: 'utf8'});
+}
+
+test('check reports the standard gate and exits non-zero without an initialized standard', () => {
+  const {destination} = fixture();
+  const result = checkRun(destination, '--checks', 'standard');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout, /\[FAIL\] 标准门禁/);
+  assert.match(result.stdout, /缺少 vendor\/rmdl\/scripts\/rmdl\.mjs/);
+  assert.deepEqual(fs.readdirSync(destination), []);
+});
+
+test('project checks run only scripts that exist and propagate failures', () => {
+  const {destination} = fixture();
+  fs.mkdirSync(path.join(destination, 'vendor/rmdl/scripts'), {recursive: true});
+  fs.copyFileSync(path.join(repo, 'scripts/rmdl.mjs'), path.join(destination, 'vendor/rmdl/scripts/rmdl.mjs'));
+  fs.writeFileSync(path.join(destination, 'package.json'), JSON.stringify({
+    scripts: {
+      typecheck: 'node -e "process.exit(0)"',
+      test: 'node -e "process.exit(1)"',
+    },
+  }));
+  const result = checkRun(destination, '--checks', 'project');
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout, /\[PASS\] \. npm run typecheck/);
+  assert.match(result.stdout, /\[FAIL\] \. npm run test/);
+  assert.match(result.stdout, /\[NOT RUN\] \. npm run lint/);
+  assert.match(result.stdout, /\[NOT RUN\] \. npm run build/);
+  assert.match(result.stdout, /汇总：PASS 1 \/ FAIL 2 \/ NOT RUN 4/);
+  assert.equal(fs.existsSync(path.join(destination, 'dist')), false);
+});
+
+test('a passing project check exits zero and does not modify the working tree', () => {
+  const {source, destination} = fixture();
+  assert.equal(run(source, destination).status, 0);
+  fs.writeFileSync(path.join(destination, 'rmdl.project.json'), JSON.stringify({
+    standardVersion: '0.3.0', projectName: 'Fixture',
+    selection: {operation: 'new', productType: 'service', frontendMode: 'none', frontendFramework: 'none',
+      backendLanguage: 'dotnet', orm: 'freesql', productionDatabase: 'sqlite', deployment: 'docker', migrationStrategy: 'not-applicable'},
+    fixed: {webFramework: 'react', language: 'typescript-strict', runtime: 'node', packageManager: 'npm',
+      uiLibrary: 'heroui-v3', cssEngine: 'tailwind-v4', iconSet: 'lucide', designSystem: 'rmdl-core',
+      sharedUiPackage: '@remmai/rmdl-ui', uiVersion: '0.3.0', dotnetTarget: 'net11.0'},
+    versioning: {source: 'VERSION', buildId: 'git-commit', frontendPlacement: 'none'},
+    governance: {state: 'locked', approvedBy: 'Owner', approvalReference: 'PR-1', approvedAt: '2026-11-16T00:00:00Z'},
+  }));
+  fs.writeFileSync(path.join(destination, 'VERSION'), '1.0.0\n');
+  fs.writeFileSync(path.join(destination, 'CHANGELOG.md'), '# Changelog\n\n## 1.0.0\n\n- First.\n');
+  fs.writeFileSync(path.join(destination, 'global.json'), JSON.stringify({sdk: {version: '11.0.100', allowPrerelease: false, rollForward: 'disable'}}));
+  fs.mkdirSync(path.join(destination, 'backend'));
+  fs.writeFileSync(path.join(destination, 'backend/App.csproj'), '<Project><PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup></Project>');
+  const before = git(destination, 'status', '--porcelain');
+  const result = checkRun(destination, '--checks', 'standard');
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /\[PASS\] 标准门禁/);
+  assert.equal(git(destination, 'status', '--porcelain'), before);
+});
+
+test('the menu exposes check and update-then-check without extra commands', () => {
+  const {source, destination} = fixture();
+  const result = spawnSync(process.execPath, [script, '--root', destination, '--repository', source], {
+    encoding: 'utf8', input: '3\n\n1\n0\n', env: {...process.env, GIT_ALLOW_PROTOCOL:'file'},
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /3\. 检查项目/);
+  assert.match(result.stdout, /4\. 更新并检查/);
+  assert.match(result.stdout, /\[FAIL\] 标准门禁/);
+});
+
 test('interactive startup presents init/update and defaults to OpenCode', () => {
   const {source, destination} = fixture();
   const result = spawnSync(process.execPath, [script, '--root', destination, '--repository', source], {
-    encoding: 'utf8', input: '1\n\n\n\n\n0\n', env: {...process.env, GIT_ALLOW_PROTOCOL:'file'},
+    encoding: 'utf8', input: '1\n\n\n\n\n\n0\n', env: {...process.env, GIT_ALLOW_PROTOCOL:'file'},
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /1\. 初始化标准/);
@@ -267,7 +336,7 @@ test('interactive startup supports skip and cancellation without filesystem writ
   assert.equal(cancelled.status, 0, cancelled.stderr);
   assert.deepEqual(fs.readdirSync(destination), []);
   const skipped = spawnSync(process.execPath, [script, '--root', destination, '--repository', source], {
-    encoding:'utf8', input:'1\n\n2\n\n\n0\n', env:{...process.env, GIT_ALLOW_PROTOCOL:'file'},
+    encoding:'utf8', input:'1\n\n2\n\n\n\n0\n', env:{...process.env, GIT_ALLOW_PROTOCOL:'file'},
   });
   assert.equal(skipped.status, 0, skipped.stderr);
   assert.equal(fs.existsSync(path.join(destination, 'AGENTS.md')), false);
