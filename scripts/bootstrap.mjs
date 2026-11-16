@@ -44,11 +44,22 @@ function sourceRef(repository) {
   return branch === 'HEAD' ? git(source, ['rev-parse', '--verify', 'HEAD']) : branch;
 }
 
+function projectLauncher(root) {
+  const launcher = process.env.RMDL_LAUNCHER_PATH;
+  if (!launcher) return null;
+  const file = path.resolve(launcher);
+  if (path.dirname(file) !== root || path.basename(file).toLowerCase() !== 'rmdl.cmd') return null;
+  const stat = fs.lstatSync(file, {throwIfNoEntry: false});
+  if (!stat?.isFile() || stat.isSymbolicLink()) return null;
+  return file;
+}
+
 function assertEmpty(root) {
   const stat = fs.lstatSync(root, {throwIfNoEntry: false});
   if (!stat) return;
   if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error(`目标必须是普通空目录：${root}`);
-  if (fs.readdirSync(root).length) throw new Error(`目标目录不是空目录，未覆盖任何文件：${root}`);
+  const launcher = projectLauncher(root);
+  if (fs.readdirSync(root).some(name => path.join(root, name) !== launcher)) throw new Error(`目标目录不是空目录（仅允许当前 rmdl.cmd 启动器），未覆盖任何文件：${root}`);
 }
 
 function resolveCommit(source, ref, proxy) {
@@ -84,6 +95,7 @@ function bootstrap(config) {
   const stage = fs.mkdtempSync(path.join(parent, '.rmdl-setup-'));
   const created = [];
   const existed = fs.existsSync(root);
+  const launcher = projectLauncher(root);
   try {
     console.log(`正在拉取 RMDL（${ref}）…`);
     git(stage, ['init', '-b', 'main']);
@@ -93,16 +105,18 @@ function bootstrap(config) {
     git(source, ['checkout', '--no-overwrite-ignore', '--detach', commit]);
     const files = templates(source, commit, config.agent);
     for (const [file, contents] of Object.entries(files)) fs.writeFileSync(path.join(stage, file), contents, {flag: 'wx'});
+    if (launcher) fs.copyFileSync(launcher, path.join(stage, path.basename(launcher)));
     fs.writeFileSync(path.join(stage, 'rmdl.bootstrap.json'), JSON.stringify({
       repository, requestedRef: ref, commit, agent: config.agent, state: 'awaiting-project-selection',
     }, null, 2) + '\n');
     fs.writeFileSync(path.join(stage, '.gitignore'), 'node_modules/\n**/bin/\n**/obj/\nbuild/\ndist/\n.env\n.env.*\n!.env.example\n');
     // Refresh the gitlink after selecting a non-default branch/tag.
-    git(stage, ['add', '--', '.gitmodules', 'vendor/rmdl', ...Object.keys(files), 'rmdl.bootstrap.json', '.gitignore']);
+    git(stage, ['add', '--', '.gitmodules', 'vendor/rmdl', ...Object.keys(files), 'rmdl.bootstrap.json', '.gitignore', ...(launcher ? [path.basename(launcher)] : [])]);
     assertEmpty(root);
     if (!existed) fs.mkdirSync(root);
     for (const name of fs.readdirSync(stage)) {
       const destination = path.join(root, name);
+      if (destination === launcher) continue;
       if (fs.existsSync(destination)) throw new Error(`目标在安装过程中新增了文件，停止覆盖：${name}`);
       fs.renameSync(path.join(stage, name), destination);
       created.push(destination);
@@ -175,7 +189,7 @@ function update(config) {
   const branch = git(source, ['rev-parse', '--abbrev-ref', 'HEAD']);
   if (record.commit && record.commit !== previous) throw new Error('实际标准 commit 与 rmdl.bootstrap.json 不一致，请先核对手动变更');
   const repository = git(source, ['remote', 'get-url', 'origin']);
-  const ref = config.ref ?? record.requestedRef ?? 'HEAD';
+  const ref = config.ref ?? record.requestedRef ?? sourceRef(config.repository);
   console.log(`正在获取标准更新（${ref}）…`);
   git(source, ['fetch', 'origin', '--tags'], config.proxy);
   if (ref === 'HEAD') git(source, ['remote', 'set-head', 'origin', '--auto'], config.proxy);
@@ -233,7 +247,7 @@ async function menu(config) {
       let suggested = config.ref ?? sourceRef(config.repository);
       if (action === '2' && !config.ref) {
         const record = readOptional(path.join(path.resolve(root), 'rmdl.bootstrap.json'));
-        suggested = record ? JSON.parse(record).requestedRef ?? 'HEAD' : 'HEAD';
+        suggested = record ? JSON.parse(record).requestedRef ?? suggested : suggested;
       }
       const ref = (await ask(`标准版本（分支 / Tag / commit，HEAD=远端默认分支）[${suggested}]：`)) || suggested;
       const proxy = (await ask(`HTTP 代理（空白使用当前 Git 设置）[${config.proxy ?? ''}]：`)) || config.proxy;
@@ -251,7 +265,7 @@ try {
     console.log(`RMDL 标准管理（需要 Node.js 和 Git）
 启动菜单：node bootstrap.mjs
 直接执行：node bootstrap.mjs --action init|update [--root path] [--agent opencode|skip] [--ref tag|branch|commit] [--proxy http://host:port] [--repository URL]
-Agent 规则默认 OpenCode，可选择跳过。初始化目标必须为空目录。
+Agent 规则默认 OpenCode，可选择跳过。初始化目标必须为空目录（允许当前单文件 rmdl.cmd 启动器）。
 默认仓库：${defaultRepository}
 从标准仓库运行时默认选择其分支（detached 时选择 commit）；单独下载脚本默认远端 HEAD。
 更新默认保持原标准引用；固定 commit/Tag 不会自动追新，换版本时显式选择新引用。

@@ -92,16 +92,18 @@ git push -u origin main
 
 ### 1. 启动标准管理菜单
 
-安装 Node.js LTS 和 Git，并确保 Git 能读取本仓库（私有库先配置自己的 Git 凭据）。把本标准仓库保存在固定工具目录，Windows 双击根目录 **[`rmdl.cmd`](rmdl.cmd)** 即可；也可在任意目录运行：
+安装 Node.js LTS 和 Git，并确保 Git 能读取本仓库（私有库先配置自己的 Git 凭据）。Windows 可将 **[`rmdl.cmd`](rmdl.cmd) 单独复制到目标文件夹后双击**。启动器先寻找旁边或 `vendor/rmdl` 内的脚本；缺少时用 Git 下载工具到临时目录，再打开菜单。也可以保留完整标准仓库，在任意目录运行：
 
 ```powershell
 # 将路径替换为本机标准仓库位置；项目目录会在菜单内询问
 node 'D:\Tools\remmai-design-system\scripts\bootstrap.mjs'
 ```
 
-菜单提供 **初始化标准 / 更新标准 / 退出**。选择操作后输入项目目录，Agent 规则可选 **OpenCode（默认）/ 跳过**，再选择标准分支/Tag/commit 和可选代理。默认值直接回车。Windows 启动器和脚本放在工具目录，不用复制进空业务目录。
+菜单提供 **初始化标准 / 更新标准 / 退出**。选择操作后输入项目目录，Agent 规则可选 **OpenCode（默认）/ 跳过**，再选择标准分支/Tag/commit 和可选代理。默认值直接回车。独立启动器默认选择它所在的目录；已有业务仓库选择更新。
 
-**初始化标准**要求目标为空目录（或父目录已存在的新目录），会初始化业务 Git 仓库、把标准固定为 `vendor/rmdl` submodule，并写入来源记录 `rmdl.bootstrap.json`。选择 OpenCode 时安装根 `AGENTS.md` 和 `opencode.json`；选择跳过则不安装任何 Agent 入口。当前自动接入仅支持 OpenCode，其他 Agent 后续增加；既有兼容模板保留但不自动复制。
+**初始化标准**要求目标为空目录（允许其中只有当前启动的 `rmdl.cmd`），或父目录已存在的新目录；会初始化业务 Git 仓库、把标准固定为 `vendor/rmdl` submodule，并写入来源记录 `rmdl.bootstrap.json`。当前启动器会保留并纳入暂存。选择 OpenCode 时安装根 `AGENTS.md` 和 `opencode.json`；选择跳过则不安装任何 Agent 入口。当前自动接入仅支持 OpenCode，其他 Agent 后续增加；既有兼容模板保留但不自动复制。
+
+首次下载工具会复用 Git 凭据与代理。Windows 没有显式 Git/环境代理时，启动器尝试读取已启用的系统 HTTP 代理；也可设置 `RMDL_PROXY` 或传入 `--proxy`。不会写入全局 Git 设置。当前功能分支尚未合并 main，独立启动器默认从 `chore/dotnet11-product-version-standards` 获取工具；可用 `RMDL_BOOTSTRAP_REF` 指定其他包含脚本的分支/Tag。
 
 成功后，在业务目录打开 OpenCode，输入：**“请按 RMDL 标准引导我完成新项目选型。”** 接入脚本只准备规范，不自动选择框架/数据库、不填写审批、不创建业务代码。也可手动运行 `node vendor/rmdl/scripts/rmdl.mjs init new --root .` 开始选型。
 

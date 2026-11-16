@@ -25,7 +25,7 @@ function fixture() {
   const destination = path.join(root, 'new product 空目录');
   fs.mkdirSync(source);
   fs.mkdirSync(destination);
-  for (const file of ['RMDL.md', 'policy/session-baseline.md', 'scripts/rmdl.mjs',
+  for (const file of ['RMDL.md', 'policy/session-baseline.md', 'scripts/rmdl.mjs', 'scripts/bootstrap.mjs', 'rmdl.cmd',
     'templates/project/AGENTS.md', 'templates/project/CLAUDE.md', 'templates/project/opencode.json']) {
     fs.mkdirSync(path.dirname(path.join(source, file)), {recursive: true});
     fs.copyFileSync(path.join(repo, file), path.join(source, file));
@@ -272,6 +272,75 @@ test('interactive startup supports skip and cancellation without filesystem writ
   assert.equal(skipped.status, 0, skipped.stderr);
   assert.equal(fs.existsSync(path.join(destination, 'AGENTS.md')), false);
   assert.ok(fs.existsSync(path.join(destination, 'vendor/rmdl')));
+});
+
+function launcherRun(source, destination, args = [], input) {
+  const launcher = path.join(destination, 'rmdl.cmd');
+  const env = {...process.env, GIT_ALLOW_PROTOCOL:'file', RMDL_BOOTSTRAP_REPOSITORY:source, RMDL_BOOTSTRAP_REF:'main'};
+  // Exercise the actual batch wrapper on Windows, and its embedded loader on other CI platforms.
+  if (process.platform === 'win32') {
+    const command = `""${launcher}" ${args.map(arg => `"${arg}"`).join(' ')}"`;
+    return spawnSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], {cwd:destination, env, encoding:'utf8', input, windowsVerbatimArguments:true});
+  }
+  const loader = "const fs=require('node:fs');const text=fs.readFileSync(process.argv[1],'utf8');eval(text.slice(text.indexOf('\\n// RMDL_NODE_START')+1));";
+  return spawnSync(process.execPath, ['-e', loader, launcher, ...args], {cwd:destination, env, encoding:'utf8', input});
+}
+
+test('a copied standalone launcher downloads tools and initializes its own folder', () => {
+  const {source, destination} = fixture();
+  const launcher = path.join(destination, 'rmdl.cmd');
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), launcher);
+  const before = fs.readFileSync(launcher, 'utf8');
+  const result = launcherRun(source, destination, ['--action','init','--repository',source,'--agent','opencode']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Loading RMDL tools/);
+  assert.ok(fs.existsSync(path.join(destination, 'vendor/rmdl/scripts/bootstrap.mjs')));
+  assert.ok(fs.existsSync(path.join(destination, 'opencode.json')));
+  assert.equal(fs.readFileSync(launcher, 'utf8'), before);
+  assert.equal(git(destination, 'ls-files', 'rmdl.cmd'), 'rmdl.cmd');
+});
+
+test('a copied launcher uses an installed submodule without downloading tools', () => {
+  const {source, destination} = fixture();
+  assert.equal(run(source, destination).status, 0);
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), path.join(destination, 'rmdl.cmd'));
+  const result = launcherRun(path.join(destination, 'missing-remote'), destination, ['--help']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /Loading RMDL tools/);
+  assert.match(result.stdout, /初始化目标/);
+});
+
+test('a copied launcher opens the menu in an existing project with an old submodule', () => {
+  const {source, destination} = fixture();
+  assert.equal(run(source, destination).status, 0);
+  fs.unlinkSync(path.join(destination, 'vendor/rmdl/scripts/bootstrap.mjs'));
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), path.join(destination, 'rmdl.cmd'));
+  const result = launcherRun(source, destination, ['--root', destination], '0\n');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Loading RMDL tools/);
+  assert.match(result.stdout, /2\. 更新标准/);
+  assert.equal(fs.existsSync(path.join(destination, 'vendor/rmdl/scripts/bootstrap.mjs')), false);
+});
+
+test('standalone launcher download failure preserves launcher and existing files', () => {
+  const {root, destination} = fixture();
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), path.join(destination, 'rmdl.cmd'));
+  fs.writeFileSync(path.join(destination, 'business.txt'), 'keep me');
+  const result = launcherRun(path.join(root, 'no-remote'), destination, ['--help']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /RMDL launcher failed/);
+  assert.deepEqual(fs.readdirSync(destination).sort(), ['business.txt', 'rmdl.cmd']);
+  assert.equal(fs.readFileSync(path.join(destination, 'business.txt'), 'utf8'), 'keep me');
+});
+
+test('allowing the active launcher does not allow other files during initialization', () => {
+  const {source, destination} = fixture();
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), path.join(destination, 'rmdl.cmd'));
+  fs.writeFileSync(path.join(destination, 'business.txt'), 'keep me');
+  const result = launcherRun(source, destination, ['--action','init','--repository',source]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /不是空目录/);
+  assert.deepEqual(fs.readdirSync(destination).sort(), ['business.txt', 'rmdl.cmd']);
 });
 
 process.on('exit', () => roots.forEach(root => fs.rmSync(root, {recursive: true, force: true})));
