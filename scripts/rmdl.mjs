@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 /**
  * RMDL v0.3 no-dependency governance CLI.
- * Commands: init new|refactor ; approve ; check ; audit
- * Run with node or bun. AI must not automate owner approval.
+ * Commands: init new|refactor ; approve ; check ; audit ; version [--release]
+ * Run with Node.js. Dependencies are managed with npm. AI must not automate owner approval.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import readline from 'node:readline/promises';
+import {execFileSync} from 'node:child_process';
 
 const VERSION = '0.3.0';
 const FIXED = Object.freeze({
-  webFramework: 'react', language: 'typescript-strict', packageManager: 'bun',
+  webFramework: 'react', language: 'typescript-strict', runtime: 'node', packageManager: 'npm',
   uiLibrary: 'heroui-v3', cssEngine: 'tailwind-v4', iconSet: 'lucide',
   designSystem: 'rmdl-core', sharedUiPackage: '@remmai/rmdl-ui', uiVersion: VERSION,
+  dotnetTarget: 'net11.0',
 });
 const allowed = Object.freeze({
   operation: ['new', 'refactor'],
@@ -51,6 +53,10 @@ function validateSelection(config) {
   for (const [key, value] of Object.entries(FIXED)) {
     if (config.fixed?.[key] !== value) err(errors, `fixed.${key} 必须为 ${value}`);
   }
+  const v = config.versioning;
+  if (v?.source !== 'VERSION' || v?.buildId !== 'git-commit') err(errors, 'versioning 必须绑定 source=VERSION 与 buildId=git-commit');
+  const placements = s.frontendMode === 'none' ? ['none'] : ['footer', 'menu', 'header', 'changelog-page'];
+  if (!placements.includes(v?.frontendPlacement)) err(errors, 'versioning.frontendPlacement 必须按 footer > menu > header > changelog-page 选择；无前端为 none');
   if (s.productType === 'service') {
     if (s.frontendMode !== 'none' || s.frontendFramework !== 'none') err(errors, 'service 类型必须 frontendMode=none 且 frontendFramework=none');
   } else if (s.frontendMode === 'none') {
@@ -98,7 +104,7 @@ function majorVersion(value, major) {
 function traverse(dir, callback, relRoot) {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
-    if (['node_modules', '.git', '.next', 'dist', 'build', 'coverage', 'generated', '__snapshots__'].includes(entry.name)) continue;
+    if (['node_modules', '.git', '.next', 'dist', 'build', 'bin', 'obj', 'vendor', 'coverage', 'generated', '__snapshots__'].includes(entry.name)) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) traverse(full, callback, relRoot);
     else if (entry.isFile()) callback(full, path.relative(relRoot, full).replaceAll(path.sep, '/'));
@@ -139,8 +145,8 @@ function checkWeb(root, config, errors) {
   if (!deps['lucide-react']) err(errors, '缺少 lucide-react 依赖');
   for (const sharedName of ['@remmai/rmdl-ui', '@remmai/rmdl-tokens']) {
     const sharedVersion = String(deps[sharedName] ?? '');
-    if (!/^(?:workspace:\*|0[.]3[.]0|(?:git\+https:\/\/|https:\/\/)[^\s]+#[a-f0-9]{7,40})$/.test(sharedVersion)) {
-      err(errors, `${sharedName} 必须使用同仓 workspace:*、精确 0.3.0 或锁定 Git SHA；禁止浮动范围`);
+    if (!/^(?:0[.]3[.]0|(?:git\+https:\/\/|https:\/\/)[^\s]+#[a-f0-9]{7,40})$/.test(sharedVersion)) {
+      err(errors, `${sharedName} 必须使用精确 0.3.0（含 npm workspace 本地包）或锁定 Git SHA；禁止浮动范围及 npm 不支持的 workspace: 协议`);
     }
   }
   const chosen = config.selection.frontendFramework;
@@ -157,11 +163,14 @@ function checkWeb(root, config, errors) {
     // 大多数 tsconfig 允许注释；此处检查 strict 显式开启，若改成复杂 JSONC 需使用工程 typecheck 做最终判断。
     if (!/"strict"\s*:\s*true\b/.test(source)) err(errors, 'TypeScript 必须显式 strict: true');
   }
-  if (!fs.existsSync(path.join(root, 'bun.lock')) && !fs.existsSync(path.join(web, 'bun.lock'))) {
-    err(errors, '缺少 bun.lock，必须锁定 Bun 安装结果');
+  if (!fs.existsSync(path.join(root, 'package-lock.json')) && !fs.existsSync(path.join(web, 'package-lock.json'))) {
+    err(errors, '缺少 package-lock.json，必须锁定 npm 安装结果');
+  }
+  if (fs.existsSync(path.join(root, 'package-lock.json')) && fs.existsSync(path.join(web, 'package-lock.json'))) {
+    err(errors, '根工作区与 apps/web 不得重复维护 package-lock.json，请按 npm workspace 边界保留一份');
   }
   for (const p of [root, web]) {
-    for (const lock of ['package-lock.json','yarn.lock','pnpm-lock.yaml']) {
+    for (const lock of ['bun.lock','bun.lockb','yarn.lock','pnpm-lock.yaml','npm-shrinkwrap.json']) {
       if (fs.existsSync(path.join(p, lock))) err(errors, `同一工作区不得混用锁文件: ${path.relative(root,path.join(p,lock))}`);
     }
   }
@@ -214,6 +223,63 @@ function checkWeb(root, config, errors) {
   if (!hasHero) err(errors, '没有在应用 CSS 中导入 @heroui/styles');
   if (!hasTokens) err(errors, '没有在应用 CSS 中导入 @remmai/rmdl-tokens/colors.css');
 }
+/** Read the product version without confusing it with the standard/package version. */
+function productVersion(root) {
+  const version = fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim();
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) throw new Error('VERSION 必须为 MAJOR.MINOR.PATCH，例如 1.1.3（无 v 前缀/前导零）');
+  return version;
+}
+function checkVersion(root, errors) {
+  let version;
+  try { version = productVersion(root); }
+  catch (e) { err(errors, `产品版本读取失败：${e.message}`); }
+  const file = path.join(root, 'CHANGELOG.md');
+  if (!fs.existsSync(file)) err(errors, '缺少 CHANGELOG.md 产品更新记录');
+  else if (version) {
+    const escaped = version.replaceAll('.', '\\.');
+    if (!new RegExp(`^##\\s+\\[?${escaped}\\]?(?:\\s|$)`, 'm').test(fs.readFileSync(file, 'utf8'))) {
+      err(errors, `CHANGELOG.md 缺少当前版本 ${version} 的二级标题`);
+    }
+  }
+}
+/** Validate literal SDK/TFM declarations; compilation still verifies evaluated MSBuild settings. */
+function checkDotnet(root, config, errors) {
+  if (config.selection?.backendLanguage !== 'dotnet') return;
+  try {
+    const sdk = readJSON(path.join(root, 'global.json')).sdk;
+    if (!/^11\.\d+\.\d+$/.test(sdk?.version ?? '') || sdk?.allowPrerelease !== false || sdk?.rollForward !== 'disable') {
+      err(errors, 'global.json 必须锁定正式 11.x SDK，并设置 allowPrerelease=false、rollForward=disable');
+    }
+  } catch (e) { err(errors, `无法读取 .NET SDK 锁 global.json：${e.message}`); }
+  let count = 0;
+  traverse(root, (file, rel) => {
+    if (!file.endsWith('.csproj')) return;
+    count++;
+    let text = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    if (!/<TargetFrameworks?>/.test(text)) {
+      let dir = path.dirname(file);
+      for (;;) {
+        const props = path.join(dir, 'Directory.Build.props');
+        if (fs.existsSync(props)) { text += fs.readFileSync(props, 'utf8').replace(/<!--[\s\S]*?-->/g, ''); break; }
+        if (dir === root) break;
+        dir = path.dirname(dir);
+      }
+    }
+    const targets = [...text.matchAll(/<TargetFrameworks?>([^<]+)<\/TargetFrameworks?>/g)].flatMap(m => m[1].split(';').map(v => v.trim()));
+    if (!targets.length || targets.some(v => !/^net11\.0(?:-[a-zA-Z0-9.]+)?$/.test(v))) err(errors, `${rel} 应用目标框架必须显式声明 net11.0（可在最近的 Directory.Build.props 中声明）`);
+  }, root);
+  if (!count) err(errors, '.NET 项目缺少 .csproj，尚未完成后端初始化');
+}
+/** Emit metadata once per build; never infer a revision from user-provided strings. */
+function buildVersion(root, release) {
+  const version = productVersion(root);
+  const git = (...args) => execFileSync('git', ['-C', root, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
+  const gitCommit = git('rev-parse', '--verify', 'HEAD');
+  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(gitCommit)) throw new Error('无法获取完整 Git commit');
+  const dirty = git('status', '--porcelain', '--untracked-files=normal').length > 0;
+  if (release && dirty) throw new Error('发布构建拒绝脏工作区；提交产品版本及源码后再生成元数据');
+  process.stdout.write(JSON.stringify({version, gitCommit, informationalVersion: `${version}+${gitCommit}${dirty ? '.dirty' : ''}`, dirty}, null, 2) + '\n');
+}
 function check(root, print=true) {
   const errors=[];
   const file=path.join(root,'rmdl.project.json');
@@ -223,6 +289,8 @@ function check(root, print=true) {
     try { config=readJSON(file); } catch(e) { err(errors, `rmdl.project.json 解析失败：${e.message}`); }
     if (config) {
       errors.push(...validateSelection(config));
+      checkVersion(root,errors);
+      checkDotnet(root,config,errors);
       checkWeb(root,config,errors);
     }
   }
@@ -287,10 +355,11 @@ async function init(root, operation) {
       selection:{operation,productType,frontendMode,frontendFramework,backendLanguage,
         orm:ormDefaults[backendLanguage],productionDatabase,deployment,migrationStrategy},
       fixed:{...FIXED},
+      versioning:{source:'VERSION',buildId:'git-commit',frontendPlacement:frontendMode==='none'?'none':'changelog-page'},
       governance:{state:'draft',approvedBy:null,approvalReference:null,approvedAt:null},
     };
     writeJSON(dest, config);
-    process.stdout.write('\n选型草稿已生成：rmdl.project.json\n下一步：请所有者审查，再执行 node scripts/rmdl.mjs approve。草稿状态禁止直接开发/交付。\n');
+    process.stdout.write('\n选型草稿已生成：rmdl.project.json\n版本位置暂填 changelog-page；按 footer > menu > header > changelog-page 复核布局后锁定。产品实现需 VERSION 与 CHANGELOG.md。\n下一步：请所有者审查，再执行 node scripts/rmdl.mjs approve。草稿状态禁止直接开发/交付。\n');
   } finally {rl.close();}
 }
 async function approve(root) {
@@ -314,12 +383,13 @@ async function approve(root) {
     process.stdout.write('选型已标记 locked。请继续使用受保护分支/指定审查者验证审批真实性；尚需脚手架与 CI 实施。\n');
   } finally {rl.close();}
 }
-function usage() {process.stdout.write('Usage: node scripts/rmdl.mjs init new|refactor | approve | check | audit [--root path]\n');}
+function usage() {process.stdout.write('Usage: node scripts/rmdl.mjs init new|refactor | approve | check | audit | version [--release] [--root path]\n');}
 async function main() {
   const [command, arg]=process.argv.slice(2);
   const root=getRoot(process.argv.slice(2));
   if (command==='init') await init(root,arg);
   else if (command==='approve') await approve(root);
+  else if (command==='version') buildVersion(root,process.argv.includes('--release'));
   else if (command==='check') {if(check(root).length) process.exitCode=1;}
   else if (command==='audit') {
     const failures=check(root);

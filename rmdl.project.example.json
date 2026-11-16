@@ -16,13 +16,20 @@
   "fixed": {
     "webFramework": "react",
     "language": "typescript-strict",
-    "packageManager": "bun",
+    "runtime": "node",
+    "packageManager": "npm",
     "uiLibrary": "heroui-v3",
     "cssEngine": "tailwind-v4",
     "iconSet": "lucide",
     "designSystem": "rmdl-core",
     "sharedUiPackage": "@remmai/rmdl-ui",
-    "uiVersion": "0.3.0"
+    "uiVersion": "0.3.0",
+    "dotnetTarget": "net11.0"
+  },
+  "versioning": {
+    "source": "VERSION",
+    "buildId": "git-commit",
+    "frontendPlacement": "menu"
   },
   "governance": {
     "state": "draft",

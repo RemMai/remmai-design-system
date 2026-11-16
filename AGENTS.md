@@ -9,6 +9,8 @@
 
 ## 1. 规范优先级
 
+每次新会话或上下文恢复，先读取 `policy/session-baseline.md`，再按任务读取详细契约。业务仓库还要读取已锁定的 `rmdl.project.json`、`VERSION`、`CHANGELOG.md` 与实际 Git 状态；不把上次会话记忆当成规范来源。
+
 遵守平台与用户更高优先级要求；在项目技术规范内部按：
 
 1. 本仓库 `RMDL.md` 中的强制红线和 `docs/02-前端视觉与页面契约.md`。
@@ -20,7 +22,7 @@
 
 ## 2. 不可违反的工程红线
 
-1. 工程化 Web 前端统一 React、TypeScript strict、Bun、HeroUI v3、Tailwind v4、Lucide、RMDL Tokens；经选型锁定的轻量 `static-html` 页面可使用原生 HTML/CSS/JS，但仍须遵守 RMDL 视觉契约并使用锁定版本 Tokens。前端形态 (Vite/Next 等) 由已批准的项目选型决定。
+1. 工程化 Web 前端统一 React、TypeScript strict、Node.js + npm、HeroUI v3、Tailwind v4、Lucide、RMDL Tokens；Node.js 使用受支持的 LTS 并锁定版本，依赖提交 `package-lock.json`，CI 使用 `npm ci`，不再使用 Bun。经选型锁定的轻量 `static-html` 页面可使用原生 HTML/CSS/JS，但仍须遵守 RMDL 视觉契约并使用锁定版本 Tokens。前端形态 (Vite/Next 等) 由已批准的项目选型决定。
 2. 所有基础布局、页面容器、表格、表单、弹窗等，优先使用 RMDL 已批准且已发布的**同一共享包版本**。不准创建另一套设计系统或引入 Ant Design/MUI/Chakra/Mantine/Bootstrap/PrimeReact 等第二套 UI。
 3. 业务页面不得私自复制公共组件源码、使用深层 CSS/`!important` 越权覆写公共设计、硬编码另一套全局颜色/间距/字号等。
 4. 初始化/整体重构：**先审计/展示选型 → 用户明确批准 → 锁定配置 → 执行**。后端语言可选，但必须满足层次边界；.NET ORM 以 FreeSql + CodeFirst 为默认，EF Core 需例外审批，Dapper 仅辅助查询。
@@ -33,6 +35,7 @@
    - 避免双重页头、无意义 KPI 卡、冗长欢迎语。页面结构使用统一契约。
 8. **认证、Authentik 与未登录自动重定向标准**：.NET 后端接入用户身份认证、自管 RBAC 或 Authentik OAuth/OIDC 单点登录时，**严禁各项目自行手写 OAuth/JWT/RBAC 逻辑**。必须直接使用 RMDL 统一核心包 `packages/dotnet/RemMai.Rmdl.Auth`，通过 `appsettings.json` 的 `Auth` 节点配置参数，调用 `AddRmdlAuth()` 与 `MapRmdlAuthEndpoints()` 接入。**系统必须启用未登录访问守卫 (`app.UseRmdlSpaAuthGuard()`)**，访客未登录访问受保护目标目录时**强制 302 自动重定向至登录页 (`/login?redirect=...`)**，严禁让未登录访客直接进入应用后台或输出受保护页面的 DOM 骨架。
 9. **Admin 视口与独立滚动标准**：管理后台视口必须高度稳定（`100vh; overflow: hidden`）。顶部 Header 与左侧 Menu 严禁跟随页面滚动；右侧 Header 下方的 Content 内容区在高度溢出时独立滚动（`overflow-y: auto`）；用户信息（头像/昵称/退出）必须强制吸附沉底在左侧 Menu 最下方。
+10. **.NET 与产品版本**：.NET 应用基线为 **11 / net11.0**，精确 SDK 由 `global.json` 锁定。前后端统一读取根 `VERSION`，后端另携带构建时真实完整 Git commit；版本展示优先级 **Footer > Menu 底部 > Header 右侧 > 更新日志菜单页**。遵守 `docs/16-产品版本与构建标识.md`，不将产品版本与规范/组件版本混淆。
 
 ## 3. RMDL 主库改动规则
 

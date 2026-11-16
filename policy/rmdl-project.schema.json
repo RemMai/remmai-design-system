@@ -3,7 +3,7 @@
   "title": "RMDL Project Selection v0.3",
   "type": "object",
   "additionalProperties": false,
-  "required": ["standardVersion", "projectName", "selection", "fixed", "governance"],
+  "required": ["standardVersion", "projectName", "selection", "fixed", "versioning", "governance"],
   "properties": {
     "$schema": {"type": "string"},
     "standardVersion": {"const": "0.3.0"},
@@ -27,17 +27,29 @@
     "fixed": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["webFramework", "language", "packageManager", "uiLibrary", "cssEngine", "iconSet", "designSystem", "sharedUiPackage", "uiVersion"],
+      "required": ["webFramework", "language", "runtime", "packageManager", "uiLibrary", "cssEngine", "iconSet", "designSystem", "sharedUiPackage", "uiVersion", "dotnetTarget"],
       "properties": {
         "webFramework": {"const": "react"},
         "language": {"const": "typescript-strict"},
-        "packageManager": {"const": "bun"},
+        "runtime": {"const": "node"},
+        "packageManager": {"const": "npm"},
         "uiLibrary": {"const": "heroui-v3"},
         "cssEngine": {"const": "tailwind-v4"},
         "iconSet": {"const": "lucide"},
         "designSystem": {"const": "rmdl-core"},
         "sharedUiPackage": {"const": "@remmai/rmdl-ui"},
-        "uiVersion": {"const": "0.3.0"}
+        "uiVersion": {"const": "0.3.0"},
+        "dotnetTarget": {"const": "net11.0"}
+      }
+    },
+    "versioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "buildId", "frontendPlacement"],
+      "properties": {
+        "source": {"const": "VERSION"},
+        "buildId": {"const": "git-commit"},
+        "frontendPlacement": {"enum": ["footer", "menu", "header", "changelog-page", "none"]}
       }
     },
     "governance": {

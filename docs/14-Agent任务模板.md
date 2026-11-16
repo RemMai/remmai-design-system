@@ -61,5 +61,5 @@
 2. 纯净工作台原则（Zero-Slop Rule）：本页面为专业高密度控制台，严禁在底部、侧边或留白区域生成“功能介绍”、“核心特性”、“使用指南”、“本模块提供以下能力”等回显本提示词的宣讲式卡片、特性网格或说明书。
 3. 容器白名单：只允许出现 3 类操作容器——筛选工具栏 (Toolbar/Filter)、核心数据工作区 (Table/Form/Board)、底栏操作/分页区 (Pagination/Footer)。
 4. 文案边界：只允许操作按钮文本（简明动词 ≤4 字）、输入框 placeholder、复杂字段右侧小问号 Tooltip。严禁为了凑版面堆叠大段文字。
-5. 交付验收：写完必须在项目根目录运行 `bun vendor/rmdl/scripts/rmdl.mjs check --root .` 确保静态门禁全绿，并通过本地 typecheck 与 build。
+5. 交付验收：写完必须在项目根目录运行 `node vendor/rmdl/scripts/rmdl.mjs check --root .` 确保静态门禁全绿，并使用 Node.js + npm 通过本地 typecheck 与 build。
 ```

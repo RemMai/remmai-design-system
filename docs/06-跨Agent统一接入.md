@@ -11,10 +11,10 @@
 | Agent | 项目根文件 | 说明 |
 |---|---|---|
 | Codex | `AGENTS.md` | 使用项目说明；嵌套文件与规则作用范围依产品规则处理 |
-| OpenCode | `AGENTS.md` | 可在 `opencode.json` 的 `instructions` 中追加按需文档；避免重复加载全套 45KB 规范 |
+| OpenCode V2 | `AGENTS.md` + `opencode.json` | `instructions` 显式加载短基线；只识别 AGENTS.md，不使用 CLAUDE.md 兜底 |
 | Claude Code | `AGENTS.md` + `CLAUDE.md`（含 `@AGENTS.md`） | 兼容不同版本及已有 Claude 配置，避免只读到与主规范冲突的旧 `CLAUDE.md` |
 
-**实际做法**：RMDL 主仓库根有 `AGENTS.md` 和薄 `CLAUDE.md`；业务项目根也应保留相同入口机制。不要在三个文件里分别复制全部 RMDL 细节，以免长期漂移。OpenCode 同时存在两类文件时通常优先 `AGENTS.md`；Claude Code 中已有 `CLAUDE.md` 可能阻止自动读取 AGENTS，所以使用显式导入最稳妥。
+**实际做法**：RMDL 主仓库根有 `AGENTS.md`、薄 `CLAUDE.md` 和 `opencode.json`；业务项目根复制对应模板。OpenCode V2 使用 AGENTS.md；CLAUDE.md 为 Claude Code 导入入口。不要在三处分别复制完整标准。
 
 用户全局配置只能作为提醒，**不能保证每一个子 Agent 自动继承**；根 Agent 派发任务时必须显式传入适用规范、锁定配置、禁止触碰的目录与验收条件。
 
@@ -52,10 +52,26 @@ Git submodule 不会自动合并更新；每次升级要审查，再在业务仓
 - 不得绕过 `rmdl.project.json` 锁定配置，私自改变 ORM、包管理器、框架。
 - UI 包升级只能提出变更 PR，消费者需明确升级，不准漂移到 latest。
 
-## 六、官方参考（在版本升级时再检查）
+## 六、OpenCode 新 session 持续遵守
+
+新会话不应依赖昨天聊天的记忆。把规则与项目状态提交到仓库：
+
+- 根 `AGENTS.md`：任务准入、规则索引、禁止改动范围、真实验证命令。
+- 根 `opencode.json`：主库加载 `policy/session-baseline.md`；业务库加载 `vendor/rmdl/policy/session-baseline.md`。模板已有此配置。已有配置时合并 instructions，保留其他设置。
+- 根 `rmdl.project.json`、VERSION、CHANGELOG.md：保存已决定的选型和产品版本。长任务把剩余事项/已执行验证写入项目任务记录，新会话结合 Git diff 继续，不将任务记录当作新审批。
+- CI：固定标准 commit，执行静态检查及真实 build/test/visual，配置必需检查与审查者。提示词用于引导，CI 用于拒绝违规结果。
+
+在业务项目目录内打开会话，确认 submodule 已初始化且基线文件存在。OpenCode 官方文档说明：缺失 instructions 文件会被跳过；`OPENCODE_DISABLE_PROJECT_CONFIG=1` 会禁用项目发现，所以必须检查环境配置。可让首轮简短报告读取的标准路径、产品版本、允许修改范围和验证命令，便于发现漏读。
+
+全局 `~/.config/opencode/AGENTS.md` 会与项目规则共同加载，OpenCode **不会自动消解冲突**。全局文件应只放简短通用偏好；角色扮演、其他领域的长流程、要求忽略工程规则的文字应移到明确调用的独立技能。仅增加更多“必须遵守”不能解决互相冲突的指令。修改全局文件前先备份并明确保留需要的偏好。
+
+项目配置保存后自动重载，需要时使用 `/reload`；不要为了应用配置反复重启服务。已加载的嵌套 AGENTS.md 修改不会自动重新发现，需要立即应用时开启新会话。根/上层规则与显式 instructions 支持更新；本仓库优先将关键短基线放在这条加载路径。
+
+## 七、官方参考（在版本升级时再检查）
 
 - Codex AGENTS.md: https://developers.openai.com/cookbook/examples/codex/iterating-development-workflows-with-codex
-- OpenCode Rules: https://opencode.ai/docs/rules/
+- OpenCode V2 Instructions: https://opencode.ai/docs/instructions
+- OpenCode V2 Config: https://opencode.ai/docs/config
 - Claude Code Memory: https://code.claude.com/docs/en/memory
 
 这些文档描述“如何读取”，不是防止模型违反规范的安全边界。运行中的 Agent 版本和配置应由你验证。

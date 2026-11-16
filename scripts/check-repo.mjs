@@ -9,9 +9,17 @@ const required = [
   'docs/10-业务项目接入.md', 'docs/11-视觉与工程验收.md',
   'registry/components.json', 'scripts/rmdl.mjs',
   'templates/project/AGENTS.md', 'templates/project/CLAUDE.md',
+  'policy/session-baseline.md', 'opencode.json', 'templates/project/opencode.json',
+  'docs/16-产品版本与构建标识.md',
 ];
 const problems = [];
 for (const file of required) if (!fs.existsSync(path.join(root, file))) problems.push(`Missing file: ${file}`);
+for (const [file, baseline] of [['opencode.json', 'policy/session-baseline.md'], ['templates/project/opencode.json', 'vendor/rmdl/policy/session-baseline.md']]) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+    if (!config.instructions?.includes(baseline)) problems.push(`${file}: missing baseline instructions`);
+  } catch (e) { problems.push(`${file}: ${e.message}`); }
+}
 let registry;
 try { registry = JSON.parse(fs.readFileSync(path.join(root, 'registry/components.json'), 'utf8')); }
 catch (e) { problems.push(`Registry invalid JSON: ${e.message}`); }

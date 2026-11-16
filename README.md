@@ -6,7 +6,7 @@
 
 ## 从哪里开始
 
-> **完整顺序目录**：见 [00 文档目录与阅读顺序](docs/00-文档目录与阅读顺序.md)。`docs/01` 至 `docs/15` 全部存在，下方仅是按实际任务筛选的入口，不代表中间缺章。
+> **完整顺序目录**：见 [00 文档目录与阅读顺序](docs/00-文档目录与阅读顺序.md)。`docs/01` 至 `docs/16` 全部存在，下方仅是按实际任务筛选的入口，不代表中间缺章。
 
 1. **创建 GitHub 私有仓库并上传**：[09 GitHub 私有仓库初始化](docs/09-GitHub私有仓库初始化.md)
 2. **让三个 Agent 读取相同规则**：[06 跨 Agent 统一接入](docs/06-跨Agent统一接入.md)
@@ -16,8 +16,9 @@
 6. **把 RMDL 接入实际业务项目**：[10 业务项目接入](docs/10-业务项目接入.md)
 7. **检查 UI 是否真正一致**：[11 视觉与工程验收](docs/11-视觉与工程验收.md)
 8. **把任务交给 AI 落地**：[14 Agent 任务模板](docs/14-Agent任务模板.md)
+9. **.NET 11、产品 Version 与 Git 标号**：[16 产品版本与构建标识](docs/16-产品版本与构建标识.md)。前端展示优先级：Footer > Menu 底部 > Header 右侧 > 更新日志菜单页。OpenCode 跨会话加载见 [06](docs/06-跨Agent统一接入.md)。
 
-## 完整文档目录（01–15，按编号）
+## 完整文档目录（01–16，按编号）
 
 | 编号 | 文档 | 重点 |
 |---|---|---|
@@ -36,6 +37,7 @@
 | 13 | [分阶段实施路线图](docs/13-分阶段实施路线图.md) | 从文档到可用组件库的分阶段实施路线图 |
 | 14 | [Agent任务模板](docs/14-Agent任务模板.md) | 给不同 Agent 直接使用的任务模板 |
 | 15 | [后端权限与Authentik双模标准](docs/15-后端权限与Authentik双模标准.md) | 自管RBAC与Authentik OAuth双模权限体系与对接契约 |
+| 16 | [产品版本与构建标识](docs/16-产品版本与构建标识.md) | .NET 11、VERSION + Git commit、前后端构建绑定与展示 |
 
 ## 规范结构与优先级
 
@@ -45,7 +47,7 @@
 - `docs/06~14`：跨 Agent、公共组件、私有仓库、发布、验收与持续迭代。
 - `registry/components.json`：组件目录，状态决定是否允许业务消费；`approved` ≠ 已发布，正式安装需包和版本同时可用。
 - `packages/tokens`、`packages/ui`：v0.3 留存的基础源码骨架；**尚未达到正式可发布的完整组件包标准**。
-- `scripts/rmdl.mjs`：v0.3 的业务项目选型/静态门禁 CLI。业务项目使用 `init/approve/check/audit`；**不要在规范主仓库执行 `check`**。
+- `scripts/rmdl.mjs`：继承 v0.3 版本契约并增补当前规则的业务选型/静态门禁 CLI。业务项目使用 `init/approve/check/audit/version`；**不要在规范主仓库执行 `check`**。
 - `scripts/check-repo.mjs`：RMDL 主仓库自身校验；`.github/workflows/rmdl-repo.yml` 调用它。
 - `templates/project/`：业务仓库接入示例，不会在主仓库作为 CI 执行。
 
@@ -53,7 +55,7 @@
 
 **owner = 你本人**。设计或技术栈决策不能由 Agent 推定为已批准。初始化/全局重构时先出选型表；现有业务项目按其 `rmdl.project.json` 锁定；公共组件必须经过提案 → 去业务化 → 展示与测试 → 你认可 → 版本发布的流程。
 
-**前端统一原则**：工程化前端使用 React / TypeScript / Bun / HeroUI v3 / Tailwind v4 / Lucide / RMDL Tokens；轻量 Tool 可经选型使用原生 HTML/CSS/JS 直接静态托管。两种模式共用 RMDL 视觉契约和 Tokens，不允许另建风格体系；工程化构建产物也可部署 OSS。
+**前端统一原则**：工程化前端使用 React / TypeScript / Node.js + npm / HeroUI v3 / Tailwind v4 / Lucide / RMDL Tokens；Node.js 采用受支持的 LTS 并锁定版本，提交 `package-lock.json`，CI 使用 `npm ci`，不再使用 Bun。轻量 Tool 可经选型使用原生 HTML/CSS/JS 直接静态托管。两种模式共用 RMDL 视觉契约和 Tokens，不允许另建风格体系；工程化构建产物也可部署 OSS。既有项目迁移见 [ADR-0001](docs/decisions/ADR-0001-nodejs-npm.md)。
 
 ## 当前能力边界（不要让 AI 虚报完成）
 
@@ -61,7 +63,7 @@
 |---|---|---|
 | v0.3 文档、业务项目 CLI、最小静态检查 | 可使用 | 根据业务项目真实文件运行；需要额外补 typecheck、lint、Visual |
 | 跨 Agent 统一入口和流程文档 | 已给出 | 项目必须实际引用这些文件才能生效 |
-| RemMai.Rmdl.Auth (.NET 双模授权库) | 已实现并测试 | 支持 .NET 10/8、FreeSql、Authentik OIDC、首登自举与权限过滤 |
+| RemMai.Rmdl.Auth (.NET 双模授权库) | 既有目标 net10.0/net8.0 | 应用标准已更新为 .NET 11；该包在 net11.0 Host 下的兼容验收仍需执行 |
 | Tokens、AppShell 相关组件源码 | 原型 | 尚未形成可跨仓库发布的构建产物 |
 | DataTable、Registry 的 approved 条目 | 尚无 | 不得声称 DataTable 已实现或发布 |
 | GitHub Packages 私有发布流程 | 文档/待实施 | 必须完成构建、测试、认证与 release workflow |
@@ -99,13 +101,15 @@ git submodule add https://github.com/RemMai/remmai-design-system.git vendor/rmdl
 # 2. 复制 Agent 规范入口模板到业务项目根
 cp vendor/rmdl/templates/project/AGENTS.md ./AGENTS.md
 cp vendor/rmdl/templates/project/CLAUDE.md ./CLAUDE.md
+# 已有 opencode.json 时合并 instructions，不覆盖个人/项目设置
+cp vendor/rmdl/templates/project/opencode.json ./opencode.json
 
 # 3. 初始化并锁定该业务项目的技术选型（按提示回答或直接生成）
 node vendor/rmdl/scripts/rmdl.mjs init new --root .
 node vendor/rmdl/scripts/rmdl.mjs approve --root .
 
 # 4. 提交引入基线
-git add .gitmodules vendor/rmdl AGENTS.md CLAUDE.md rmdl.project.json
+git add .gitmodules vendor/rmdl AGENTS.md CLAUDE.md opencode.json rmdl.project.json
 git commit -m "chore: integrate RMDL design standards submodule"
 ```
 
@@ -130,7 +134,7 @@ cd ../..
 git submodule update --remote --merge vendor/rmdl
 
 # 检查：拉取更新后，立即运行门禁验证业务项目是否依然合规
-bun vendor/rmdl/scripts/rmdl.mjs check --root .
+node vendor/rmdl/scripts/rmdl.mjs check --root .
 
 # 提交：在业务仓中记录本次规范升级的 Commit 指针
 git add vendor/rmdl

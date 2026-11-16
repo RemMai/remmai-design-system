@@ -1,7 +1,7 @@
 # RMDL — RemMai Design Language
 
 > 跨项目产品设计语言 · 工程架构规范 · AI 协作开发基线  
-> **规范仓库版本**：v0.4.0（核心技术条款沿用 v0.3；新增跨 Agent、组件 Registry、私有发布与 GitHub 治理） · **修订日期**：2026-11-02
+> **规范仓库版本**：v0.4.0（工作区修订未发布；JavaScript 统一 Node.js + npm，.NET 基线 11，产品版本统一绑定） · **修订日期**：2026-11-16
 > **工具兼容状态**：`scripts/rmdl.mjs` 仍是 v0.3 校验器，包名 `@remmai` / UI 版本 `0.3.0` 尚未参数化；发布跨私有仓库组件前必须完成适配  
 > **适用范围**：Web、管理后台、用户门户、移动 App、桌面程序、CLI、服务端、后台任务及数据平台
 
@@ -45,7 +45,7 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 ## 0.2 v0.3 强制治理入口（优先于旧版弹性建议）
 
 1. **新项目 / 整体重构必须先选择、后写代码**。AI 必须向项目所有者展示选择矩阵并等待回复；不能用“默认值”跳过交互。`rmdl.project.json` 从草稿转为锁定后，所有工作者必须遵守。详见 `docs/01-选型与审批协议.md`。
-2. **Web 前端须锁定实现模式**：工程化模式使用 React + TypeScript strict + Bun + HeroUI v3 + Tailwind v4 + Lucide + RMDL Tokens + `@remmai/rmdl-ui`；原生静态页模式可用 HTML/CSS/JS/图片，无需框架和构建工具，但仍须遵守相同的 RMDL 视觉契约。原生静态页面向可直接托管的轻量小工具，不用于复杂后台。
+2. **Web 前端须锁定实现模式**：工程化模式使用 React + TypeScript strict + Node.js + npm + HeroUI v3 + Tailwind v4 + Lucide + RMDL Tokens + `@remmai/rmdl-ui`；原生静态页模式可用 HTML/CSS/JS/图片，无需框架和构建工具，但仍须遵守相同的 RMDL 视觉契约。原生静态页面向可直接托管的轻量小工具，不用于复杂后台。
 3. **两种模式共享 RMDL 视觉标准，工程交付方式不同**。工程化项目的静态构建产物与原生静态页都必须可部署至 OSS 静态网站托管；需要 SSR、服务端逻辑或 API 的功能不能假定 OSS 静态托管即可运行。管理后台的框架、页头、工具栏、表格、表单、状态仍由公共 UI 包或统一模板提供。
 4. **红线禁止 Agent 自行例外**：新增第二套 UI 库、修改全局主色/字体/圆角、后端更换主 ORM、在重构中扩大改造范围，必须停下申请所有者审批，并记录 ADR。
 5. **验证失败就停，不允许降级标准**：`scripts/rmdl.mjs check`、类型检查、Lint、测试、Visual Regression 均为交付门禁；不得自动关闭检查项、删测试、刷新所有截图来宣称通过。
@@ -63,13 +63,13 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 |---|---|---|
 | 工程化 Web | React + TypeScript（strict） | 持续使用受支持的稳定版本；静态构建可部署 OSS |
 | Web 框架 | Next.js App Router / Vite / 无构建框架 | Next.js 用于 SEO/SSR；Vite 用于纯客户端应用；轻量 Tool 可选原生静态页 |
-| JavaScript 工具链 | **Bun** | 默认包管理、脚本、测试及可兼容场景下的运行时；使用 `bun.lock` |
+| JavaScript 工具链 | **Node.js + npm** | Node.js 使用受支持的 LTS 运行时；npm 管理依赖和脚本，使用 `package-lock.json`，CI 执行 `npm ci` |
 | UI | **HeroUI v3** + Tailwind CSS v4 | 统一组件原语与主题；项目不得随意叠加第二套通用组件库 |
 | 图表 | **EvilCharts** | 低/中密度图表优先其 Recharts 实现，高频/大数据优先其 ECharts 实现 |
 | 静态图标 | Lucide | 统一图标线宽和尺寸 |
 | 动态图标 | **Morphicons** | 用于语义状态转换，不用于无意义装饰 |
 | 动画 | **Motion for React** + CSS Transitions | 基础动效 CSS 优先，复杂过渡用 Motion |
-| 主后端 | C# + **.NET 10 LTS** + ASP.NET Core | .NET 11 截至本版本制定时仍为 RC；GA 后按版本策略复核 |
+| 主后端 | C# + **.NET 11** + ASP.NET Core | 应用目标框架 net11.0；global.json 锁定经过验证的 11.x 正式 SDK，CI/容器同步 |
 | 主要 ORM | **FreeSql（CodeFirst）** | 优先级 FreeSql > EF Core > Dapper |
 | 开发数据库 | **SQLite** | 默认零额外数据库依赖 |
 | 生产数据库 | PostgreSQL 18 / MariaDB 12.3 LTS（轻型单机可明确选 SQLite） | 按产品选择并进行 Provider 兼容测试；SQLite 生产需记录适用范围 |
@@ -77,13 +77,13 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 | 容器 | Docker + Compose | 镜像多阶段构建、固定版本和健康检查 |
 | API | REST（OpenAPI）、按需 gRPC/SignalR | 只是接入层，不包含独占业务逻辑 |
 
-**版本策略**：每个项目初始化时查询官方发布信息，默认采用可获得的**最新正式稳定 SDK/框架**，优先兼顾长期支持、驱动兼容、安全补丁。具体版本锁定在 `global.json`、锁文件、Docker 基础镜像标签/摘要及版本矩阵文档中。升级通过自动测试、兼容验证和发布审核完成。前端 Bun 与 Next.js/第三方插件不兼容时可记录例外，不将“禁用 Node”理解为牺牲可部署性。
+**版本策略**：每个项目初始化时查询官方发布信息，默认采用可获得的**最新正式稳定 SDK/框架**，优先兼顾长期支持、驱动兼容、安全补丁；Node.js 采用受支持且经依赖兼容验证的 LTS。具体版本锁定在 `global.json`、`.node-version`/`.nvmrc`、`package.json` 的 `engines`/`packageManager`、锁文件、Docker 基础镜像标签/摘要及版本矩阵文档中。升级通过自动测试、兼容验证和发布审核完成。JavaScript 工程统一使用 Node.js + npm，不再使用 Bun 运行时或工具链。
 
 ### 1.2 其他后端语言的选型
 
 - **Java**：优先最新正式 GA JDK，并核查目标框架与驱动支持；对长期生产维护可记录选择最新受支持 LTS 的理由。
 - **Python**：优先最新正式稳定 CPython，使用项目隔离环境及锁文件；检查核心依赖是否提供兼容包。
-- **Node.js**：可由所有者选择作为后端技术，采用受支持的最新合适稳定运行时；后端 ORM 默认 TypeScript + Drizzle。前端开发工具仍统一 Bun。
+- **Node.js**：可由所有者选择作为后端技术，采用受支持且经兼容验证的 LTS 运行时；后端 ORM 默认 TypeScript + Drizzle。前端与 Node.js 后端的 JavaScript 工具链统一 Node.js + npm；这不改变其他后端语言的选型。
 - 任何技术栈都必须符合模块化、测试、配置、日志、安全、文档、CI/CD 和跨平台原则。
 
 ### 1.3 版本治理
@@ -94,6 +94,17 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 - SHOULD：至少每月检查依赖漏洞与 SDK 支持生命周期。
 - MUST：禁止未经验证把 RC、Preview 或 Nightly 作为默认生产基线。
 
+### 1.3.1 产品版本与构建标识（所有前端和后端）
+
+- MUST：每个产品根目录提交 `VERSION`，内容为产品自行定义的三段版本 `MAJOR.MINOR.PATCH`（如 `1.1.3`），作为前端、后端和发布制品的唯一产品版本来源。不得拿 RMDL 版本、.NET 版本或 UI 包版本代替产品版本。
+- MUST：不兼容变更增加 MAJOR，向后兼容的新功能/小更新增加 MINOR，兼容的 bug 修复增加 PATCH；提高前一段时后续段归零。发布版本不得同号覆盖，变更记录维护在根 `CHANGELOG.md`。
+- MUST：构建时从实际源码仓库 `git rev-parse HEAD` 取得完整 commit hash，作为内部 `gitCommit`；不手填、不以时间戳或流水线序号代替。发布工作区必须干净；开发态必须显式标记 `dirty`。
+- MUST：同一产品前后端读取同一 `VERSION`；各自制品携带构建时的真实 commit。分仓构建需共享已确认的产品发布版本，各自保留自己的 hash；独立发布为不同产品时各自维护版本与兼容矩阵。
+- MUST：后端版本查询入口（HTTP 推荐 `/api/version`；CLI 使用 `--version`；Worker 使用启动日志/运维接口）提供 `version`、`gitCommit`、`informationalVersion`、`dirty`。例如正式制品 `informationalVersion` 为 `1.1.3+<完整commit>`。接口及日志读取嵌入制品的构建元数据，不在运行机器上读取 Git。
+- MUST：前端显示 `Version 1.1.3`，从同次构建元数据绑定；不能写死在组件里或用后端版本冒充已部署前端版本。位置优先级 **Footer > 左侧 Menu 底部 > Header 右侧 > 独立更新日志菜单页**，详见 `docs/02-前端视觉与页面契约.md` 第 11 节。
+- .NET 应用使用 `net11.0`，精确 SDK 锁在根 `global.json`；构建注入 `Version`、`SourceRevisionId`、`InformationalVersion`，避免 SDK 重复追加 hash。SDK、ASP.NET Core、ORM/驱动兼容性须实际验证。
+- 实现、构建命令、验收与旧项目迁移见 `docs/16-产品版本与构建标识.md`；标准修改依据见 `docs/decisions/ADR-0002-dotnet11-product-version.md`。
+
 ---
 
 
@@ -101,7 +112,7 @@ RMDL 不是一个固定皮肤或某个框架的模板，而是一套跨项目共
 
 | 规则级别 | 项目内容 | 决策权 |
 |---|---|---|
-| LOCKED | React、TypeScript strict、Bun、HeroUI v3、Tailwind v4、RMDL Core、共享 UI 包 | 标准维护者；项目 Agent 无权改变 |
+| LOCKED | React、TypeScript strict、Node.js + npm、HeroUI v3、Tailwind v4、RMDL Core、共享 UI 包 | 标准维护者；项目 Agent 无权改变 |
 | CHOOSE_ONCE | Next.js / Vite、后端语言、生产数据库、产品类型、部署方式 | 初始化或整体重构时由项目所有者选择 |
 | CONDITIONAL | 各后端的主 ORM / CodeFirst 驱动 | 根据后端语言选默认，例外需所有者 + ADR |
 | PER_FEATURE | 图表、SignalR、后台任务、附加存储 | 有业务证据时按项目规范引入 |
@@ -359,13 +370,15 @@ MUST：核心业务层不得直接依赖 ORM。Infrastructure 层可以使用 `I
 - MAY：简单动画使用 CSS；复杂入场、退出、布局变化使用 Motion for React。
 - MUST：不得同时引入多个库来完成完全相同的组件职责，除非有明确业务例外。
 
-### 5.2 Bun 使用原则
+### 5.2 Node.js 与 npm 使用原则
 
-- `bun.lock` 纳入版本控制。
-- CI 使用 `bun install --frozen-lockfile`。
-- 常用脚本：`bun run dev`、`bun run lint`、`bun run typecheck`、`bun run test`、`bun run build`。
-- Bun 作为优先运行时和工具链；若 Next.js/第三方包存在实测兼容问题，可以限定范围回退 Node 运行时，并写入 ADR。
-- 禁止混用 npm/pnpm/yarn 的锁文件来维护同一工作区。
+- Node.js 为统一 JavaScript 运行时，npm 为统一包管理器；不再使用 Bun、pnpm 或 Yarn 维护本标准项目。
+- 使用受支持且经依赖兼容验证的 Node.js LTS；通过 `.node-version` 或 `.nvmrc` 锁定具体版本，并使 CI、Docker 与本地一致。`package.json` 声明 `engines.node` 与精确 `packageManager: "npm@<已验证版本>"`。
+- `package-lock.json` 纳入版本控制；本地新增或更新依赖使用 `npm install`，CI 使用 `npm ci`，禁止在 CI 通过重新解析依赖绕过锁文件。
+- 常用脚本：`npm run dev`、`npm run lint`、`npm run typecheck`、`npm run test`、`npm run build`；直接执行 JavaScript 工具使用 `node scripts/<工具>.mjs`。测试框架由实际项目配置决定，不绑定专有运行时测试 API。
+- 同一 npm workspace 仅维护根 `package-lock.json`；独立 `apps/web` 工程可在自身目录维护该文件。不得混入 `bun.lock`、`bun.lockb`、`pnpm-lock.yaml`、`yarn.lock` 或 `npm-shrinkwrap.json`。
+- npm workspaces 依赖使用匹配本地包版本的精确版本号，不使用 npm 不支持的 `workspace:*` 协议；共享 UI/Tokens 仍须满足统一版本与审批规则。
+- 既有 Bun 项目迁移须遵循 [ADR-0001](docs/decisions/ADR-0001-nodejs-npm.md)：更新选型锁与脚本、生成 npm 锁文件、验证安装及完整工程检查后再移除旧锁文件；不得改写旧审批字段假称重新获批。
 
 ### 5.3 TypeScript 与模块边界
 
@@ -501,7 +514,7 @@ MUST：后端为权限唯一可信执行点。**前端菜单隐藏和按钮隐�
 
 ### 8.1 目标部署形态
 
-- **Windows**：.NET 应用可作为控制台、服务或独立发布包运行；Web 前端根据 Next.js/Bun 运行模式部署。
+- **Windows**：.NET 应用可作为控制台、服务或独立发布包运行；Web 前端按静态产物或 Next.js/Node.js 服务端运行模式部署。
 - **Linux**：systemd（原生进程）或容器部署，服务环境变量/文件权限明确。
 - **Docker**：作为默认服务器部署格式，采用多阶段构建、非 root 运行、只读和持久化策略（适用时）。
 - 同一代码仓库可产出不同目标的制品，但不宣称“单个二进制直接通用所有平台”。
@@ -566,7 +579,7 @@ remmai-product/
 ├── .editorconfig
 ├── .gitignore
 ├── .env.example
-├── bun.lock                  # 若前端位于同一仓库根工作区
+├── package-lock.json         # 若前端位于同一 npm 根工作区
 ├── Jenkinsfile
 ├── docker-compose.yml
 ├── docs/
@@ -581,7 +594,7 @@ remmai-product/
 │   ├── changelog.md
 │   └── decisions/
 ├── apps/
-│   └── web/                  # React / Next.js / Bun
+│   └── web/                  # React / Next.js / Node.js + npm
 │       ├── src/
 │       │   ├── app/          # App Router routes/layouts
 │       │   ├── features/     # business-first modules
@@ -616,7 +629,7 @@ remmai-product/
 └── scripts/
 ```
 
-若已经使用根 `bun.lock` 管理 workspace，不再在子项目维护冲突锁文件。`*.slnx` 是否可用、相关 SDK/IDE 是否支持，依具体开发环境验证。
+若已经使用根 `package-lock.json` 管理 npm workspace，不再在子项目维护冲突锁文件；独立前端工程则在 `apps/web` 维护其锁文件。`*.slnx` 是否可用、相关 SDK/IDE 是否支持，依具体开发环境验证。
 
 ### 9.1 命名约定
 
@@ -669,7 +682,7 @@ remmai-product/
 
 1. `README.md`：定位、启动方式、主要入口。
 2. `docs/architecture.md`：模块图、依赖关系、关键边界。
-3. `docs/development.md`：SDK 版本、Bun/.NET 命令、环境搭建。
+3. `docs/development.md`：SDK 版本、Node.js/npm/.NET 命令、环境搭建。
 4. `docs/database.md`：Provider、CodeFirst、迁移及测试机制。
 5. `docs/permissions.md`：RBAC 资源和权限编码、菜单契约。
 6. `docs/ui-design.md`：所用主题、Token 扩展、页面模式。
@@ -694,7 +707,7 @@ remmai-product/
 
 ### 12.2 编码阶段
 
-- MUST：工程化 Web 遵守 React + TS strict + Bun + HeroUI v3 + RMDL；锁定 `static-html` 的轻量 Tool 遵守 RMDL 视觉契约与 Tokens；后端遵守已批准的语言选型；选择 .NET 时默认 FreeSql CodeFirst。
+- MUST：工程化 Web 遵守 React + TS strict + Node.js + npm + HeroUI v3 + RMDL；锁定 `static-html` 的轻量 Tool 遵守 RMDL 视觉契约与 Tokens；后端遵守已批准的语言选型；选择 .NET 时默认 FreeSql CodeFirst。
 - MUST：保持 Service/Application 与 API/Host 分离。
 - MUST：前端菜单按有效 RBAC 渲染，后端实施真实授权。
 - MUST：复用统一发布的 RMDL Tokens 和 `@remmai/rmdl-ui` 组件，禁止重造基础 UI 风格。
@@ -720,7 +733,7 @@ remmai-product/
 - [ ] Domain/Application/Infrastructure/Host 边界清晰且依赖检查通过。
 - [ ] 已按所选后端语言使用主 ORM 和 CodeFirst；若为 .NET 则默认 FreeSql；开发环境 SQLite 可初始化（适用时）。
 - [ ] 生产 Provider、迁移流程与集成测试已验证。
-- [ ] 工程化 Web 使用 React/TypeScript strict/Bun/HeroUI v3/Tailwind v4/RMDL UI 包；`static-html` Tool 使用 RMDL Tokens 和视觉契约；EvilCharts/Morphicons/Motion 按需使用。
+- [ ] 工程化 Web 使用 React/TypeScript strict/Node.js/npm/HeroUI v3/Tailwind v4/RMDL UI 包；`static-html` Tool 使用 RMDL Tokens 和视觉契约；EvilCharts/Morphicons/Motion 按需使用。
 - [ ] 统一 RMDL Tokens，Light/Dark 和响应式表现正常。
 - [ ] RBAC 同时控制前端表现与后端真实权限。
 - [ ] 公开页面 SEO 或私有页面 noindex 策略正确。
@@ -738,7 +751,7 @@ remmai-product/
 
 **阶段 A — Design Foundation**：采用 Young Tech 色彩方案，确定 Token/字体/间距/形状、HeroUI 主题、基础组件、暗色模式、交互和动效规则。
 
-**阶段 B — Application Starter**：建立 React+Bun 前端模板、.NET+FreeSql 后端模板、SQLite、本地配置、RBAC、OpenAPI、基础测试。
+**阶段 B — Application Starter**：建立 React+Node.js+npm 前端模板、.NET+FreeSql 后端模板、SQLite、本地配置、RBAC、OpenAPI、基础测试。
 
 **阶段 C — Delivery**：完成 Docker Compose、Windows/Linux 发布、Jenkinsfile、生产数据库迁移与 Staging 验证。
 
@@ -755,11 +768,11 @@ remmai-product/
 - [HeroUI v3](https://heroui.com/en/docs/react/releases/v3-0-0) · [HeroUI Releases](https://heroui.com/en/docs/react/releases)
 - [EvilCharts](https://evilcharts.com/docs) · [Morphicons](https://www.morphicons.com/docs)
 - [Motion for React](https://motion.dev/docs/react) · [Motion 无障碍](https://motion.dev/docs/react-accessibility)
-- [Bun 文档](https://bun.sh/docs) · [Next.js Metadata](https://nextjs.org/learn/dashboard-app/adding-metadata)
+- [Node.js 文档](https://nodejs.org/en/docs) · [npm ci](https://docs.npmjs.com/cli/commands/npm-ci) · [Next.js Metadata](https://nextjs.org/learn/dashboard-app/adding-metadata)
 - [Jenkins Pipeline](https://www.jenkins.io/doc/book/pipeline/)
 - [PostgreSQL 发布说明](https://www.postgresql.org/docs/release/) · [MariaDB 12.3 LTS](https://mariadb.org/mariadb-server-12-3-lts-released/)
 
-**版本说明**：本版技术快照采用 .NET 10 LTS、PostgreSQL 18、MariaDB 12.3 LTS；新项目启动时必须重新确认正式 GA、支持周期与 Provider 兼容情况，而非永久锁死这些大版本。
+**版本说明**：当前 .NET 基线为 11（目标框架 net11.0）；PostgreSQL 18、MariaDB 12.3 LTS 为数据库快照。项目锁定时核查正式 SDK、支持周期与 Provider 兼容性，不以缺少本地 SDK 为由擅自降回 .NET 10。
 
 
 ---
@@ -771,3 +784,5 @@ remmai-product/
 | v0.1 | 2026-10-27 | 首次整合全栈设计语言与工程化规范 |
 | **v0.2** | **2026-10-28** | 将视觉语言调整为 **Young Tech**；采用活力蓝、薄荷绿、珊瑚色；重构 Light/Dark 色彩 Token、组件使用规则与对比度约束；其他技术与架构基线不变 |
 | **v0.3.0** | **2026-11-02** | 增加初始化/重构选型、所有者审批锁、React 前端不变量、统一组件源、页面简洁度契约、Agent 分工、静态门禁和视觉验收 |
+| v0.4 工作区修订（未发布） | 2026-11-11 | 经所有者明确要求，将 JavaScript 工具链统一为 Node.js LTS + npm；同步选型 Schema、CLI、锁文件规则、CI 模板与回归测试；迁移决策见 ADR-0001 |
+| v0.4 工作区修订（未发布） | 2026-11-16 | .NET 基线改为 11；产品 VERSION + Git commit 绑定、前端展示顺序、OpenCode 跨会话加载与版本静态门禁；见 ADR-0002 |

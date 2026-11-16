@@ -228,7 +228,7 @@ public static RouteHandlerBuilder RequirePermission(this RouteHandlerBuilder bui
 ## 八、RMDL .NET 统一授权包 (`RemMai.Rmdl.Auth`)
 
 为避免各个业务系统各自手写 OAuth/JWT/RBAC 导致逻辑差异与安全漏洞，RMDL 提供了官方 .NET 统一组件库：  
-**`packages/dotnet/RemMai.Rmdl.Auth`**（支持 .NET 10 LTS 与 .NET 8 LTS）。
+**`packages/dotnet/RemMai.Rmdl.Auth`**（现有共享库目标为 net10.0/net8.0）。应用标准已更新为 **.NET 11 / net11.0**；接入时必须在 .NET 11 Host 上验证兼容性，不能将既有包的目标框架视为新的应用基线或已通过 .NET 11 验收。版本绑定见 [16](16-产品版本与构建标识.md)。
 
 ### 1. 业务项目引入方式
 
