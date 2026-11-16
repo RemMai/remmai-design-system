@@ -144,6 +144,8 @@ node 'D:\Tools\remmai-design-system\scripts\bootstrap.mjs'
 
 门禁规则：工作区根存在 `.rmdl`、`rmdl.project.json` 或 `vendor/rmdl/` 时，才读取全局标准基线；否则不应用 RMDL。这是提示词级开关，强制约束仍靠 `check`、CI 与分支保护。全局标准更新后所有启用项目立即采用新规则；需要版本固定与 CI 复现的项目，仍建议保留 `vendor/rmdl` submodule。
 
+`rmdl.cmd` 的脚本查找顺序为：项目内 `scripts/bootstrap.mjs` → 项目 `vendor/rmdl/scripts/bootstrap.mjs` → 全局 `rmdl/scripts/bootstrap.mjs` → 临时下载。装了全局标准后，没有子模块的项目不会再重复下载工具；项目固定了 submodule 时仍优先用项目版本。
+
 非交互用法：
 
 ```powershell

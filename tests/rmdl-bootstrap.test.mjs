@@ -433,9 +433,11 @@ test('interactive startup supports skip and cancellation without filesystem writ
   assert.ok(fs.existsSync(path.join(destination, 'vendor/rmdl')));
 });
 
-function launcherRun(source, destination, args = [], input) {
+function launcherRun(source, destination, args = [], input, extraEnv = {}) {
   const launcher = path.join(destination, 'rmdl.cmd');
-  const env = {...process.env, GIT_ALLOW_PROTOCOL:'file', RMDL_BOOTSTRAP_REPOSITORY:source, RMDL_BOOTSTRAP_REF:'main'};
+  // Isolate the machine-wide standard so download tests stay deterministic on a configured machine.
+  const env = {...process.env, GIT_ALLOW_PROTOCOL:'file', RMDL_BOOTSTRAP_REPOSITORY:source, RMDL_BOOTSTRAP_REF:'main',
+    RMDL_GLOBAL_DIR: path.join(destination, '.no-global-standard'), ...extraEnv};
   // Exercise the actual batch wrapper on Windows, and its embedded loader on other CI platforms.
   if (process.platform === 'win32') {
     const command = `""${launcher}" ${args.map(arg => `"${arg}"`).join(' ')}"`;
@@ -500,6 +502,34 @@ test('allowing the active launcher does not allow other files during initializat
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /不是空目录/);
   assert.deepEqual(fs.readdirSync(destination).sort(), ['business.txt', 'rmdl.cmd']);
+});
+
+function fakeGlobal(root, text) {
+  const dir = path.join(root, 'global config');
+  fs.mkdirSync(path.join(dir, 'rmdl/scripts'), {recursive: true});
+  fs.writeFileSync(path.join(dir, 'rmdl/scripts/bootstrap.mjs'), `console.log(${JSON.stringify(text)});\n`);
+  return dir;
+}
+
+test('launcher reuses the machine-wide standard instead of downloading tools', () => {
+  const {root, destination} = fixture();
+  const globalDir = fakeGlobal(root, 'GLOBAL STANDARD SCRIPT');
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), path.join(destination, 'rmdl.cmd'));
+  const result = launcherRun(root, destination, ['--help'], undefined, {RMDL_GLOBAL_DIR: globalDir});
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /GLOBAL STANDARD SCRIPT/);
+  assert.doesNotMatch(result.stdout, /Loading RMDL tools/);
+});
+
+test('launcher prefers a project-pinned submodule over the global standard', () => {
+  const {root, source, destination} = fixture();
+  assert.equal(run(source, destination).status, 0);
+  const globalDir = fakeGlobal(root, 'GLOBAL STANDARD SCRIPT');
+  fs.copyFileSync(path.join(repo, 'rmdl.cmd'), path.join(destination, 'rmdl.cmd'));
+  const result = launcherRun(root, destination, ['--help'], undefined, {RMDL_GLOBAL_DIR: globalDir});
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /GLOBAL STANDARD SCRIPT/);
+  assert.match(result.stdout, /RMDL 标准管理/);
 });
 
 process.on('exit', () => roots.forEach(root => fs.rmSync(root, {recursive: true, force: true})));

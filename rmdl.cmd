@@ -63,7 +63,13 @@ exit /b 1
     const proxy = proxySetting();
     if (proxy && !/^https?:\/\//.test(proxy)) throw new Error('Proxy must be an http:// or https:// URL');
     const localScript = path.join(directory, 'scripts/bootstrap.mjs');
-    let script = [localScript, path.join(directory, 'vendor/rmdl/scripts/bootstrap.mjs')]
+    const installedScript = path.join(directory, 'vendor/rmdl/scripts/bootstrap.mjs');
+    const globalDir = process.env.RMDL_GLOBAL_DIR
+      ? path.resolve(process.env.RMDL_GLOBAL_DIR)
+      : process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'opencode') : path.join(os.homedir(), '.config', 'opencode');
+    const globalScript = path.join(globalDir, 'rmdl', 'scripts', 'bootstrap.mjs');
+    // Project-pinned standard wins; the machine-wide copy avoids re-downloading in projects without a submodule.
+    let script = [localScript, installedScript, globalScript]
       .find(file => fs.existsSync(file) && fs.statSync(file).isFile());
     if (!script) {
       console.log('Loading RMDL tools from GitHub...');
