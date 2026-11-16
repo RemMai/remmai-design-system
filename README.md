@@ -132,6 +132,28 @@ node 'D:\Tools\remmai-design-system\scripts\bootstrap.mjs'
 
 结果逐项标记 **PASS / FAIL / NOT RUN** 并汇总。未定义的脚本、缺失的 dotnet 或未配置的视觉回归显示 NOT RUN，不会被当作通过；存在 FAIL 时命令返回非零。检查只读，不修改项目文件。视觉回归与人工页面审查仍需按项目配置单独执行。
 
+### 4. 全局标准（本机只装一次）
+
+菜单选择 **5. 全局标准（安装 / 更新）**，默认安装到 `<用户配置目录>/opencode/rmdl`，并生成全局门禁 `rmdl-gate.md`、登记到全局 `opencode.json` 的 `instructions`。以后更新标准只跑这一处，不必逐个项目更新。
+
+项目开关用 **6. 启用 / 停用本项目**：
+
+- 启用：在项目根写 `.rmdl`，记录全局标准路径与 commit。
+- 停用：只删除 `.rmdl`，不动标准副本和项目文件。
+- 已有 `rmdl.project.json` 或 `vendor/rmdl` 的项目视为已启用，无需额外标记。
+
+门禁规则：工作区根存在 `.rmdl`、`rmdl.project.json` 或 `vendor/rmdl/` 时，才读取全局标准基线；否则不应用 RMDL。这是提示词级开关，强制约束仍靠 `check`、CI 与分支保护。全局标准更新后所有启用项目立即采用新规则；需要版本固定与 CI 复现的项目，仍建议保留 `vendor/rmdl` submodule。
+
+非交互用法：
+
+```powershell
+node <标准仓库>\scripts\bootstrap.mjs --action global
+node <标准仓库>\scripts\bootstrap.mjs --action enable --root .
+node <标准仓库>\scripts\bootstrap.mjs --action disable --root .
+```
+
+全局 `opencode.json` 不是纯 JSON（含注释）或存在 `opencode.jsonc` 时，脚本不会改写，只提示手动加入 `rmdl-gate.md`。全局 `AGENTS.md` 若存在会与项目规则同时加载，建议只保留简短通用偏好。
+
 ## 仓库使用纪律
 
 所有规范、组件和 Token 的公共变更只能通过 **RMDL 主仓库** 完成；业务仓库不能以覆盖 CSS 的方式“修复”公共组件。设计变更需要 issue/ADR、组件示例、测试、版本号及你的批准；消费者通过固定版本和 PR 升级。Agent 的输出只算提案，永远不是所有者批准证明。

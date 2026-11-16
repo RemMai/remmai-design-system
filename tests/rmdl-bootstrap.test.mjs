@@ -319,6 +319,96 @@ test('the menu exposes check and update-then-check without extra commands', () =
   assert.match(result.stdout, /\[FAIL\] 标准门禁/);
 });
 
+function globalRun(globalDir, ...args) {
+  return spawnSync(process.execPath, [script, ...args], {
+    encoding: 'utf8', env: {...process.env, GIT_ALLOW_PROTOCOL:'file', RMDL_GLOBAL_DIR: globalDir},
+  });
+}
+
+test('global setup installs one standard, writes a gate and registers it once', () => {
+  const {root, source, destination} = fixture();
+  const globalDir = path.join(root, 'global config');
+  const first = globalRun(globalDir, '--action', 'global', '--repository', source);
+  assert.equal(first.status, 0, first.stderr);
+  const standard = path.join(globalDir, 'rmdl');
+  assert.ok(fs.existsSync(path.join(standard, 'policy/session-baseline.md')));
+  const gate = fs.readFileSync(path.join(globalDir, 'rmdl-gate.md'), 'utf8');
+  assert.match(gate, /rmdl\.project\.json/);
+  assert.match(gate, /\.rmdl/);
+  assert.match(gate, /vendor\/rmdl\//);
+  assert.ok(gate.includes(standard.replaceAll('\\', '/')));
+  const config = JSON.parse(fs.readFileSync(path.join(globalDir, 'opencode.json'), 'utf8'));
+  assert.deepEqual(config.instructions, ['rmdl-gate.md']);
+  assert.equal(config.$schema, 'https://opencode.ai/config.json');
+  // The product directory stays untouched by a global install.
+  assert.deepEqual(fs.readdirSync(destination), []);
+});
+
+test('repeating global setup is idempotent and preserves unrelated settings', () => {
+  const {root, source} = fixture();
+  const globalDir = path.join(root, 'global config');
+  assert.equal(globalRun(globalDir, '--action', 'global', '--repository', source).status, 0);
+  const configPath = path.join(globalDir, 'opencode.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.model = 'custom/model';
+  config.instructions.push('custom.md');
+  fs.writeFileSync(configPath, JSON.stringify(config));
+  const second = globalRun(globalDir, '--action', 'global', '--repository', source);
+  assert.equal(second.status, 0, second.stderr);
+  const merged = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  assert.equal(merged.model, 'custom/model');
+  assert.deepEqual(merged.instructions, ['rmdl-gate.md', 'custom.md']);
+});
+
+test('global setup leaves a JSONC config for manual merging', () => {
+  const {root, source} = fixture();
+  const globalDir = path.join(root, 'global config');
+  fs.mkdirSync(globalDir, {recursive: true});
+  const jsonc = '// my settings\n{"model":"custom/model"}\n';
+  fs.writeFileSync(path.join(globalDir, 'opencode.jsonc'), jsonc);
+  const result = globalRun(globalDir, '--action', 'global', '--repository', source);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /需要手动处理/);
+  assert.equal(fs.readFileSync(path.join(globalDir, 'opencode.jsonc'), 'utf8'), jsonc);
+  assert.equal(fs.existsSync(path.join(globalDir, 'opencode.json')), false);
+});
+
+test('enable writes a marker bound to the global standard and disable removes only it', () => {
+  const {root, source, destination} = fixture();
+  const globalDir = path.join(root, 'global config');
+  assert.equal(globalRun(globalDir, '--action', 'global', '--repository', source).status, 0);
+  fs.writeFileSync(path.join(destination, 'business.txt'), 'keep');
+  const enabled = globalRun(globalDir, '--action', 'enable', '--root', destination);
+  assert.equal(enabled.status, 0, enabled.stderr);
+  const marker = JSON.parse(fs.readFileSync(path.join(destination, '.rmdl'), 'utf8'));
+  assert.equal(marker.standard, path.join(globalDir, 'rmdl'));
+  assert.match(marker.commit, /^[a-f0-9]{40}$/);
+  const disabled = globalRun(globalDir, '--action', 'disable', '--root', destination);
+  assert.equal(disabled.status, 0, disabled.stderr);
+  assert.equal(fs.existsSync(path.join(destination, '.rmdl')), false);
+  assert.equal(fs.readFileSync(path.join(destination, 'business.txt'), 'utf8'), 'keep');
+});
+
+test('enable refuses when the global standard is missing', () => {
+  const {root, destination} = fixture();
+  const result = globalRun(path.join(root, 'empty config'), '--action', 'enable', '--root', destination);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /全局标准未安装/);
+  assert.deepEqual(fs.readdirSync(destination), []);
+});
+
+test('menu exposes the global standard and project toggle', () => {
+  const {root, source, destination} = fixture();
+  const globalDir = path.join(root, 'global config');
+  const result = spawnSync(process.execPath, [script, '--root', destination, '--repository', source], {
+    encoding: 'utf8', input: '6\n\n2\n0\n', env: {...process.env, GIT_ALLOW_PROTOCOL:'file', RMDL_GLOBAL_DIR: globalDir},
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /5\. 全局标准/);
+  assert.match(result.stdout, /6\. 启用 \/ 停用本项目/);
+  assert.match(result.stdout, /已停用 RMDL/);
+});
+
 test('interactive startup presents init/update and defaults to OpenCode', () => {
   const {source, destination} = fixture();
   const result = spawnSync(process.execPath, [script, '--root', destination, '--repository', source], {

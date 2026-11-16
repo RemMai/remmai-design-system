@@ -5,8 +5,11 @@ import process from 'node:process';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import readline from 'node:readline';
+import os from 'node:os';
 
 const defaultRepository = 'https://github.com/RemMai/remmai-design-system.git';
+// Used when the installer runs from a detached global copy; switch to main after the tooling is merged.
+const defaultBranch = 'chore/dotnet11-product-version-standards';
 const entryFiles = ['AGENTS.md', 'opencode.json'];
 const baselineFiles = ['RMDL.md', 'policy/session-baseline.md', 'scripts/rmdl.mjs'];
 
@@ -15,14 +18,14 @@ function options(args) {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--help' || arg === '-h') { result.help = true; continue; }
-    if (!['--root', '--repository', '--ref', '--proxy', '--agent', '--action', '--checks'].includes(arg)) throw new Error(`未知参数：${arg}`);
+    if (!['--root', '--repository', '--ref', '--proxy', '--agent', '--action', '--checks', '--standard'].includes(arg)) throw new Error(`未知参数：${arg}`);
     const value = args[++i];
     if (!value || value.startsWith('-')) throw new Error(`${arg} 缺少有效参数`);
     result[arg.slice(2)] = value;
   }
   if (result.proxy && !/^https?:\/\//.test(result.proxy)) throw new Error('--proxy 使用 http:// 或 https:// URL');
   if (!['opencode', 'skip'].includes(result.agent)) throw new Error('--agent 只能为 opencode 或 skip');
-  if (result.action && !['init', 'update', 'check'].includes(result.action)) throw new Error('--action 只能为 init、update 或 check');
+  if (result.action && !['init', 'update', 'check', 'global', 'enable', 'disable'].includes(result.action)) throw new Error('--action 只能为 init、update、check、global、enable 或 disable');
   if (result.checks && !['standard', 'project'].includes(result.checks)) throw new Error('--checks 只能为 standard 或 project');
   return result;
 }
@@ -42,7 +45,7 @@ function sourceRef(repository) {
   const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   if (!fs.existsSync(path.join(source, 'RMDL.md')) || !fs.existsSync(path.join(source, '.git'))) return 'HEAD';
   const branch = git(source, ['rev-parse', '--abbrev-ref', 'HEAD']);
-  return branch === 'HEAD' ? git(source, ['rev-parse', '--verify', 'HEAD']) : branch;
+  return branch === 'HEAD' ? defaultBranch : branch;
 }
 
 function projectLauncher(root) {
@@ -296,6 +299,112 @@ function runChecks(root, mode) {
   return count('FAIL') === 0;
 }
 
+/** One machine-wide standard plus a per-project marker: no rule copies inside projects. */
+function globalDir() {
+  if (process.env.RMDL_GLOBAL_DIR) return path.resolve(process.env.RMDL_GLOBAL_DIR);
+  if (process.env.XDG_CONFIG_HOME) return path.join(process.env.XDG_CONFIG_HOME, 'opencode');
+  return path.join(os.homedir(), '.config', 'opencode');
+}
+
+function gateText(standard, commit) {
+  const root = standard.replaceAll('\\', '/');
+  return `# RMDL 全局门禁
+
+本机 RMDL 标准：\`${root}\`（commit \`${commit}\`）
+
+仅当当前工作区根目录存在下列任一标记时，才应用 RMDL：
+- \`rmdl.project.json\`
+- \`.rmdl\`（本项目启用标记）
+- \`vendor/rmdl/\`
+
+命中时：
+1. 先读取 \`${root}/policy/session-baseline.md\`，按其中的基线执行。
+2. 需要细节时按基线指向的文档按需读取，不要一次性加载全部标准。
+3. 项目自己的 \`rmdl.project.json\`、\`VERSION\`、\`CHANGELOG.md\` 优先；但不得放宽标准红线。
+
+未命中时：不要应用 RMDL，也不要读取或引用标准文件，按该项目自身约定工作。
+
+启用或停用：在项目根运行 \`node ${root}/scripts/bootstrap.mjs --action enable --root .\` 或 \`--action disable --root .\`。
+`;
+}
+
+/** Merge the gate into global OpenCode instructions without touching unrelated settings. */
+function registerGate(dir, gateFile) {
+  const jsonc = path.join(dir, 'opencode.jsonc');
+  if (fs.existsSync(jsonc)) return {ok: false, reason: '存在 opencode.jsonc，未自动改写；请手动把 rmdl-gate.md 加入 instructions'};
+  const json = path.join(dir, 'opencode.json');
+  let config = {};
+  if (fs.existsSync(json)) {
+    try { config = JSON.parse(fs.readFileSync(json, 'utf8')); }
+    catch { return {ok: false, reason: 'opencode.json 不是纯 JSON（可能含注释），未自动改写；请手动加入 rmdl-gate.md'}; }
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return {ok: false, reason: 'opencode.json 顶层必须是对象，未自动改写'};
+  }
+  if (config.instructions !== undefined && (!Array.isArray(config.instructions) || config.instructions.some(v => typeof v !== 'string'))) {
+    return {ok: false, reason: 'instructions 不是字符串数组，未自动改写'};
+  }
+  const entry = path.relative(dir, gateFile).replaceAll('\\', '/');
+  config.$schema ??= 'https://opencode.ai/config.json';
+  config.instructions = [...new Set([...(config.instructions ?? []), entry])];
+  fs.writeFileSync(json, JSON.stringify(config, null, 2) + '\n');
+  return {ok: true, entry};
+}
+
+function globalSetup(config) {
+  const dir = globalDir();
+  const standard = path.resolve(config.standard ?? path.join(dir, 'rmdl'));
+  fs.mkdirSync(dir, {recursive: true});
+  const repository = /^(?:https?:\/\/|ssh:\/\/|git@)/.test(config.repository) ? config.repository : path.resolve(config.repository);
+  const ref = config.ref ?? process.env.RMDL_BOOTSTRAP_REF ?? sourceRef(repository);
+  const existing = fs.existsSync(standard) ? fs.readdirSync(standard) : [];
+  if (existing.length && !fs.existsSync(path.join(standard, '.git'))) throw new Error(`全局标准目录非空且不是 Git 仓库：${standard}`);
+  if (existing.length) {
+    console.log(`正在更新全局标准（${ref}）…`);
+    git(standard, ['fetch', 'origin', '--tags'], config.proxy);
+  } else {
+    console.log(`正在安装全局标准（${ref}）…`);
+    fs.mkdirSync(path.dirname(standard), {recursive: true});
+    git(path.dirname(standard), ['clone', '--', repository, standard], config.proxy);
+  }
+  if (ref === 'HEAD') git(standard, ['remote', 'set-head', 'origin', '--auto'], config.proxy);
+  const commit = resolveCommit(standard, ref, config.proxy);
+  git(standard, ['checkout', '--no-overwrite-ignore', '--detach', commit]);
+  const gateFile = path.join(dir, 'rmdl-gate.md');
+  fs.writeFileSync(gateFile, gateText(standard, commit));
+  const registration = registerGate(dir, gateFile);
+  console.log(`\n全局标准：${standard}\ncommit：${commit}\n门禁文件：${gateFile}`);
+  if (registration.ok) console.log(`已登记到全局 OpenCode instructions：${registration.entry}`);
+  else console.log(`需要手动处理：${registration.reason}`);
+  console.log('\n项目启用：在项目根运行本脚本 --action enable --root .，或放入 rmdl.project.json。');
+  console.log('项目停用：--action disable --root .（删除 .rmdl 标记，不删除标准副本）。');
+  if (fs.existsSync(path.join(dir, 'AGENTS.md'))) {
+    console.log('\n提醒：检测到全局 AGENTS.md。它与项目规则会同时加载且不会自动消解冲突；建议只保留简短通用偏好。');
+  }
+}
+
+function markerFile(root) {
+  return path.join(root, '.rmdl');
+}
+
+function setProjectEnabled(config, enabled) {
+  const root = path.resolve(config.root);
+  if (!fs.existsSync(root)) throw new Error(`项目目录不存在：${root}`);
+  const marker = markerFile(root);
+  if (!enabled) {
+    if (fs.existsSync(marker)) fs.rmSync(marker);
+    console.log(`已停用 RMDL：${root}\n删除 .rmdl 标记；标准副本与其他文件未改动。`);
+    return;
+  }
+  const dir = globalDir();
+  const standard = path.resolve(config.standard ?? path.join(dir, 'rmdl'));
+  if (!fs.existsSync(path.join(standard, 'scripts/rmdl.mjs'))) {
+    throw new Error(`全局标准未安装：${standard}\n请先运行本脚本 --action global，或指定 --standard 路径。`);
+  }
+  const commit = git(standard, ['rev-parse', 'HEAD']);
+  fs.writeFileSync(marker, JSON.stringify({standard, commit, enabledAt: new Date().toISOString()}, null, 2) + '\n');
+  console.log(`已启用 RMDL：${root}\n标记：.rmdl\n标准：${standard}\ncommit：${commit}`);
+  console.log('新会话将按全局门禁加载标准；当前会话需重新读取或开启新会话。');
+}
+
 async function menu(config) {
   const rl = readline.createInterface({input: process.stdin, crlfDelay: Infinity});
   const lines = rl[Symbol.asyncIterator]();
@@ -317,10 +426,36 @@ async function menu(config) {
   };
   try {
     for (;;) {
-      console.log('\nRMDL 标准管理\n  1. 初始化标准\n  2. 更新标准\n  3. 检查项目\n  4. 更新并检查\n  0. 退出');
+      console.log('\nRMDL 标准管理\n  1. 初始化标准\n  2. 更新标准\n  3. 检查项目\n  4. 更新并检查\n  5. 全局标准（安装 / 更新）\n  6. 启用 / 停用本项目\n  0. 退出');
       const action = await ask('请选择：');
       if (action === '0') return;
-      if (!['1', '2', '3', '4'].includes(action)) { console.log('请输入 1、2、3、4 或 0。'); continue; }
+      if (!['1', '2', '3', '4', '5', '6'].includes(action)) { console.log('请输入 1–6 或 0。'); continue; }
+      if (action === '5') {
+        const dir = globalDir();
+        const standard = (await ask(`全局标准目录 [${path.join(dir, 'rmdl')}]：`)) || path.join(dir, 'rmdl');
+        const suggested = config.ref ?? process.env.RMDL_BOOTSTRAP_REF ?? sourceRef(config.repository);
+        const ref = (await ask(`标准版本（分支 / Tag / commit，HEAD=远端默认分支）[${suggested}]：`)) || suggested;
+        const proxy = (await ask(`HTTP 代理（空白使用当前 Git 设置）[${config.proxy ?? ''}]：`)) || config.proxy;
+        const selected = options(['--action', 'global', '--standard', standard, '--repository', config.repository,
+          '--ref', ref, ...(proxy ? ['--proxy', proxy] : [])]);
+        try { globalSetup(selected); } catch (error) { console.error(`RMDL 操作失败：${error.message}`); }
+        continue;
+      }
+      if (action === '6') {
+        const root = (await ask(`项目目录 [${path.resolve(config.root)}]：`)) || config.root;
+        let mode = null;
+        while (mode === null) {
+          const choice = await ask('1. 启用本项目  2. 停用本项目  0. 返回 [1]：');
+          if (!choice || choice === '1') mode = true;
+          else if (choice === '2') mode = false;
+          else if (choice === '0') break;
+          else console.log('请输入 0、1 或 2。');
+        }
+        if (mode === undefined) continue;
+        const selected = options(['--action', mode ? 'enable' : 'disable', '--root', root]);
+        try { setProjectEnabled(selected, mode); } catch (error) { console.error(`RMDL 操作失败：${error.message}`); }
+        continue;
+      }
       if (action === '3') {
         const root = (await ask(`项目目录 [${path.resolve(config.root)}]：`)) || config.root;
         const mode = await chooseChecks('project');
@@ -358,17 +493,20 @@ try {
   if (config.help) {
     console.log(`RMDL 标准管理（需要 Node.js 和 Git）
 启动菜单：node bootstrap.mjs
-直接执行：node bootstrap.mjs --action init|update|check [--checks standard|project] [--root path] [--agent opencode|skip] [--ref tag|branch|commit] [--proxy http://host:port] [--repository URL]
-菜单提供：初始化标准 / 更新标准 / 检查项目 / 更新并检查。
+直接执行：node bootstrap.mjs --action init|update|check|global|enable|disable [--checks standard|project] [--root path] [--agent opencode|skip] [--ref tag|branch|commit] [--proxy http://host:port] [--repository URL] [--standard path]
+菜单提供：初始化标准 / 更新标准 / 检查项目 / 更新并检查 / 全局标准 / 启用或停用本项目。
+全局标准：本机只装一份，写入全局门禁；项目用 .rmdl 或 rmdl.project.json 标记启用，无需复制规则。
 检查会运行标准门禁，并按项目实际存在的 package.json 脚本与 .NET 解决方案执行工程检查；缺失项报告 NOT RUN。
 Agent 规则默认 OpenCode，可选择跳过。初始化目标必须为空目录（允许当前单文件 rmdl.cmd 启动器）。
 默认仓库：${defaultRepository}
-从标准仓库运行时默认选择其分支（detached 时选择 commit）；单独下载脚本默认远端 HEAD。
+从标准仓库运行时默认选择其分支（detached 时选择 ${defaultBranch}）；单独下载脚本默认远端 HEAD。
 更新默认保持原标准引用；固定 commit/Tag 不会自动追新，换版本时显式选择新引用。
 仅接入/更新/检查规则，不自动选择技术栈、不审批、不提交或推送业务仓库。`);
   } else if (config.action === 'check') {
     if (!runChecks(path.resolve(config.root), config.checks ?? 'project')) process.exitCode = 1;
-  } else if (config.action) (config.action === 'init' ? bootstrap : update)(config);
+  } else if (config.action === 'global') globalSetup(config);
+  else if (config.action === 'enable' || config.action === 'disable') setProjectEnabled(config, config.action === 'enable');
+  else if (config.action) (config.action === 'init' ? bootstrap : update)(config);
   else await menu(config);
 } catch (error) {
   console.error(`RMDL 接入失败：${error.message}`);

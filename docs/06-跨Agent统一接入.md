@@ -65,6 +65,20 @@ Git submodule 不会自动合并更新；每次升级要审查，再在业务仓
 
 全局 `~/.config/opencode/AGENTS.md` 会与项目规则共同加载，OpenCode **不会自动消解冲突**。全局文件应只放简短通用偏好；角色扮演、其他领域的长流程、要求忽略工程规则的文字应移到明确调用的独立技能。仅增加更多“必须遵守”不能解决互相冲突的指令。修改全局文件前先备份并明确保留需要的偏好。
 
+### 全局标准 + 项目标记（本机只装一次）
+
+不想每个项目都复制规则时，使用：
+
+```bash
+node <标准仓库>/scripts/bootstrap.mjs --action global    # 装一次：标准 + 全局门禁 + 登记 instructions
+node <标准仓库>/scripts/bootstrap.mjs --action enable --root .   # 项目启用
+node <标准仓库>/scripts/bootstrap.mjs --action disable --root .  # 项目停用
+```
+
+全局门禁 `rmdl-gate.md` 只在工作区根存在 `.rmdl`、`rmdl.project.json` 或 `vendor/rmdl/` 时要求读取标准基线，否则不应用 RMDL。项目因此不需要 `AGENTS.md`/`opencode.json` 副本，开关就是一个标记文件。已有 `rmdl.project.json` 的项目自动视为启用。
+
+边界：门禁是提示词级开关，不是强制；`check`、CI 与分支保护仍需独立配置。全局标准更新后所有启用项目立即换规则，版本固定与可复现构建仍应使用 submodule。全局配置为 JSONC 或含注释时脚本不改写，需手动登记。全局 `AGENTS.md` 与门禁会同时加载，冲突不会自动解决。
+
 项目配置保存后自动重载，需要时使用 `/reload`；不要为了应用配置反复重启服务。已加载的嵌套 AGENTS.md 修改不会自动重新发现，需要立即应用时开启新会话。根/上层规则与显式 instructions 支持更新；本仓库优先将关键短基线放在这条加载路径。
 
 ## 七、官方参考（在版本升级时再检查）
