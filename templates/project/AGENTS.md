@@ -1,8 +1,10 @@
-# Business project RMDL agent policy
+# OpenCode — Business project RMDL policy
 
 This project uses RMDL. Before changing files:
 
-Repeat these checks in every new session and after context recovery. Read `vendor/rmdl/policy/session-baseline.md`, `VERSION`, `CHANGELOG.md` and the actual Git status; conversation memory is not the source of truth. Keep `opencode.json` from this template at the business project root so OpenCode loads the baseline explicitly.
+Repeat these checks in every new session and after context recovery. Read `vendor/rmdl/policy/session-baseline.md` and the actual Git status; once the product is initialized, also read `VERSION` and `CHANGELOG.md`. Conversation memory is not the source of truth. Keep `opencode.json` from this template at the business project root so OpenCode loads the baseline explicitly.
+
+If `rmdl.project.json` does not exist after standard bootstrap, guide the owner through `vendor/rmdl/docs/01-选型与审批协议.md` before creating business code. Bootstrap installs the standard only; it does not approve technology choices. The installer currently offers OpenCode or skip; additional agent adapters can be added later.
 
 1. Read `rmdl.project.json`; do not implement until governance is locked (unless performing an owner-approved initial selection or read-only refactor audit).
 2. Read `vendor/rmdl/AGENTS.md`, `vendor/rmdl/RMDL.md` and the relevant contracts under `vendor/rmdl/docs/`. The local copy/submodule must be pinned to a reviewed RMDL version.

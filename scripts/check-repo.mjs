@@ -11,6 +11,7 @@ const required = [
   'templates/project/AGENTS.md', 'templates/project/CLAUDE.md',
   'policy/session-baseline.md', 'opencode.json', 'templates/project/opencode.json',
   'docs/16-产品版本与构建标识.md',
+  'scripts/bootstrap.mjs', 'rmdl.cmd', 'tests/rmdl-bootstrap.test.mjs',
 ];
 const problems = [];
 for (const file of required) if (!fs.existsSync(path.join(root, file))) problems.push(`Missing file: ${file}`);

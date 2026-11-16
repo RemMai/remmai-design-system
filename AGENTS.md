@@ -51,6 +51,7 @@ Root 给每个 Worker 写清：目标、输入文件、固定选型与共享包�
 ## 5. 真正交付之前
 
 - 主库运行 `node scripts/check-repo.mjs`、已有 `node --test tests/rmdl-guard.test.mjs`；组件变更另加真实 build/typecheck/component tests/visual（未配置就报告 NOT RUN）。
+- 修改标准接入脚本/Agent 接入模板时，另运行 `node --test tests/rmdl-bootstrap.test.mjs`，覆盖空目录初始化、OpenCode/跳过、版本固定、更新与本地修改保护。
 - 业务库运行本项目实际存在的 `rmdl.mjs check`、install/typecheck/lint/test/build/visual；不能把静态守卫误认为完整视觉验证。
 - 输出：选型/版本、复用组件、修改范围、真正执行的 PASS/FAIL/NOT RUN、风险、回滚、仍需所有者批准的点。不得伪称测试通过或已发布。
 

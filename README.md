@@ -90,28 +90,22 @@ git push -u origin main
 
 业务仓库（如你的各业务系统）通过 **Git Submodule** 引入并锁定本规范，切勿直接拷贝本仓库源码。
 
-### 1. 业务项目初次引入标准
+### 1. 启动标准管理菜单
 
-在你的业务项目根目录下执行：
+安装 Node.js LTS 和 Git，并确保 Git 能读取本仓库（私有库先配置自己的 Git 凭据）。把本标准仓库保存在固定工具目录，Windows 双击根目录 **[`rmdl.cmd`](rmdl.cmd)** 即可；也可在任意目录运行：
 
-```bash
-# 1. 将规范库作为子模块添加到 vendor/rmdl
-git submodule add https://github.com/RemMai/remmai-design-system.git vendor/rmdl
-
-# 2. 复制 Agent 规范入口模板到业务项目根
-cp vendor/rmdl/templates/project/AGENTS.md ./AGENTS.md
-cp vendor/rmdl/templates/project/CLAUDE.md ./CLAUDE.md
-# 已有 opencode.json 时合并 instructions，不覆盖个人/项目设置
-cp vendor/rmdl/templates/project/opencode.json ./opencode.json
-
-# 3. 初始化并锁定该业务项目的技术选型（按提示回答或直接生成）
-node vendor/rmdl/scripts/rmdl.mjs init new --root .
-node vendor/rmdl/scripts/rmdl.mjs approve --root .
-
-# 4. 提交引入基线
-git add .gitmodules vendor/rmdl AGENTS.md CLAUDE.md opencode.json rmdl.project.json
-git commit -m "chore: integrate RMDL design standards submodule"
+```powershell
+# 将路径替换为本机标准仓库位置；项目目录会在菜单内询问
+node 'D:\Tools\remmai-design-system\scripts\bootstrap.mjs'
 ```
+
+菜单提供 **初始化标准 / 更新标准 / 退出**。选择操作后输入项目目录，Agent 规则可选 **OpenCode（默认）/ 跳过**，再选择标准分支/Tag/commit 和可选代理。默认值直接回车。Windows 启动器和脚本放在工具目录，不用复制进空业务目录。
+
+**初始化标准**要求目标为空目录（或父目录已存在的新目录），会初始化业务 Git 仓库、把标准固定为 `vendor/rmdl` submodule，并写入来源记录 `rmdl.bootstrap.json`。选择 OpenCode 时安装根 `AGENTS.md` 和 `opencode.json`；选择跳过则不安装任何 Agent 入口。当前自动接入仅支持 OpenCode，其他 Agent 后续增加；既有兼容模板保留但不自动复制。
+
+成功后，在业务目录打开 OpenCode，输入：**“请按 RMDL 标准引导我完成新项目选型。”** 接入脚本只准备规范，不自动选择框架/数据库、不填写审批、不创建业务代码。也可手动运行 `node vendor/rmdl/scripts/rmdl.mjs init new --root .` 开始选型。
+
+初始化生成的文件已暂存但未提交；核对后自行提交业务仓库。未配置技术选型与工程前，不应将业务门禁预期失败当成脚本安装失败。
 
 > **克隆已包含子模块的业务仓库**：如果是他人或在全新机器拉取业务仓库，使用：  
 > `git clone --recurse-submodules <业务仓库URL>`  
@@ -119,27 +113,13 @@ git commit -m "chore: integrate RMDL design standards submodule"
 
 ---
 
-### 2. 业务项目后续更新标准（Pull & Re-check）
+### 2. 更新标准
 
-当 RMDL 主仓库发布了新规范、新文档（如新增权限标准）或修复了门禁脚本后，在业务项目根目录下按以下步骤更新：
+再次打开同一脚本，选择 **更新标准** 并指向已有业务仓库。默认复用上次的引用：分支会取最新远端 commit；Tag/commit 保持固定，需要升级时显式输入新引用。无论选择哪种引用，业务仓库最终记录的都是精确 commit。`HEAD` 表示远端默认分支。
 
-```bash
-# 方式 A：进入 submodule 目录精准拉取（最稳妥，支持指定分支或 Release Tag）
-cd vendor/rmdl
-git pull origin main
-# 若需锁定到指定发布版本：git checkout <TAG_NAME>
-cd ../..
+更新会保留业务 `rmdl.project.json`、VERSION 与 CHANGELOG，检查标准子模块的本地修改，合并 OpenCode 的 instructions 并保留其他设置。自定义修改过的 AGENTS.md 或另一份 JSONC 配置需要人工合并；可选择「跳过」仅更新标准，现有 Agent 文件不会被删除。更新只生成可审查的工作区变更，不暂存、不提交、不推送。
 
-# 方式 B：根目录单行更新
-git submodule update --remote --merge vendor/rmdl
-
-# 检查：拉取更新后，立即运行门禁验证业务项目是否依然合规
-node vendor/rmdl/scripts/rmdl.mjs check --root .
-
-# 提交：在业务仓中记录本次规范升级的 Commit 指针
-git add vendor/rmdl
-git commit -m "chore(rmdl): upgrade RMDL design standards to latest"
-```
+完成后审查 `git diff`，运行 `node vendor/rmdl/scripts/rmdl.mjs check --root .` 和实际工程测试，按新标准迁移必要配置后再提交。详细参数、失败处理与回滚见 [10 业务项目接入](docs/10-业务项目接入.md#七标准管理脚本)。
 
 ## 仓库使用纪律
 
