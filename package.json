@@ -1,6 +1,6 @@
 {
   "name": "rem-ai-design",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "RMDL — RemMai Design Language standard, agent entrypoints and scaffolding CLI",
   "type": "module",
   "bin": {
