@@ -24,12 +24,12 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
@@ -101,6 +101,13 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Show OIDC identity claims (diagnostics)
+        continue-on-error: true
+        run: |
+          RESPONSE=$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org")
+          TOKEN=$(printf '%s' "$RESPONSE" | node -e 'const fs=require("node:fs");const r=JSON.parse(fs.readFileSync(0,"utf8"));process.stdout.write(r.value||"")')
+          printf '%s' "$TOKEN" | node -e 'const fs=require("node:fs");const t=fs.readFileSync(0,"utf8").trim();if(!t){console.log("no OIDC token returned");process.exit(0);}const p=JSON.parse(Buffer.from(t.split(".")[1],"base64url").toString());console.log(JSON.stringify(p,null,2))'
 
       - name: Publish via OIDC
         if: ${{ (github.event_name == 'push' || inputs.dry_run == false) && steps.published.outputs.exists == 'false' }}
