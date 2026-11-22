@@ -103,10 +103,12 @@ test('version and enable/disable work without Git submodules', () => {
   const root = project('version');
   assert.equal(run(root, 'init', '--agent', 'skip').status, 0);
 
+  // 版本号来自根 VERSION，测试不硬编码发布版本
+  const expected = fs.readFileSync(path.join(repo, 'VERSION'), 'utf8').trim();
   const version = run(root, 'version');
   assert.equal(version.status, 0, version.output);
-  assert.match(version.output, /cli\s+0\.4\.0/);
-  assert.match(version.output, /project lock\s+npm/);
+  assert.match(version.output, new RegExp(`cli\\s+${expected.replaceAll('.', '\\.')}`));
+  assert.match(version.output, new RegExp(`project lock\\s+npm ${expected.replaceAll('.', '\\.')}`));
 
   assert.equal(run(root, 'enable').status, 0);
   const marker = JSON.parse(fs.readFileSync(path.join(root, '.rmdl'), 'utf8'));
