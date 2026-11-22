@@ -1,6 +1,6 @@
 {
   "name": "rem-ai-design",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "RMDL — RemMai Design Language standard, agent entrypoints and scaffolding CLI",
   "type": "module",
   "bin": {
@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "check": "node scripts/check-repo.mjs",
-    "test": "node --test tests/rmdl-guard.test.mjs tests/rmdl-bootstrap.test.mjs tests/rmdl-npm.test.mjs",
+    "test": "node --test tests/rmdl-guard.test.mjs tests/rmdl-bootstrap.test.mjs tests/rmdl-npm.test.mjs tests/rmdl-cli-hint.test.mjs",
     "prepack": "node scripts/prepack.mjs",
     "pack:dry": "node scripts/prepack.mjs && npm pack --dry-run"
   },

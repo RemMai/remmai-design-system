@@ -26,7 +26,7 @@
 
 - 必须设置 `rmdl-check` 为受保护分支的**Required Status Check**。
 - `AGENTS.md`、`RMDL.md`、`rmdl.project.json`、`policy/`、`packages/ui`、`packages/tokens` 的修改必须由项目所有者或指定 UI/架构审查者审阅（示例见 `docs/CODEOWNERS.example`）。
-- 执行 `node scripts/rmdl.mjs check`；应用实际脚手架配置完成后，在 npm 锁文件所在工作区追加 `npm ci`、Typecheck、Lint、Test、Build 与 Playwright Visual Regression，脚本统一使用 `npm run <脚本名>`。
+- 业务仓库执行 `node vendor/rmdl/scripts/rmdl.mjs check --root .`（规范主仓库内为 `node scripts/rmdl.mjs check`）；应用实际脚手架配置完成后，在 npm 锁文件所在工作区追加 `npm ci`、Typecheck、Lint、Test、Build 与 Playwright Visual Regression，脚本统一使用 `npm run <脚本名>`。
 - 无法运行的检查报告为 NOT RUN，不能记为 PASS。
 - 严禁 `|| true`、跳过失败用例、删除断言、无审查更新截图基线、禁用 lint 规则来使 CI 变绿。
 

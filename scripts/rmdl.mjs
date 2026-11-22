@@ -39,6 +39,22 @@ function getRoot(args) {
   if (at >= 0 && !args[at + 1]) throw new Error('--root 缺少路径');
   return path.resolve(at >= 0 ? args[at + 1] : '.');
 }
+// The CLI runs from the standard repo (scripts/rmdl.mjs) and from an installed
+// business repo (vendor/rmdl/scripts/rmdl.mjs); hints must quote the path that
+// actually exists instead of a fixed "scripts/rmdl.mjs".
+function cliScript(root) {
+  const entry = process.argv[1] ? path.resolve(process.argv[1]) : path.join(root, 'scripts', 'rmdl.mjs');
+  const relative = path.relative(root, entry);
+  const inside = Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+  const shown = (inside ? relative : entry).split(path.sep).join('/');
+  return /\s/.test(shown) ? `"${shown}"` : shown;
+}
+function cliInvocation(root, subcommand = '') {
+  const script = `node ${cliScript(root)}${subcommand ? ` ${subcommand}` : ''}`;
+  const absoluteRoot = path.resolve(root);
+  if (path.resolve(process.cwd()) === absoluteRoot) return script;
+  return `${script} --root "${absoluteRoot.split(path.sep).join('/')}"`;
+}
 function readJSON(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 function writeJSON(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n'); }
 function err(result, text) { result.push(text); }
@@ -359,7 +375,7 @@ async function init(root, operation) {
       governance:{state:'draft',approvedBy:null,approvalReference:null,approvedAt:null},
     };
     writeJSON(dest, config);
-    process.stdout.write('\n选型草稿已生成：rmdl.project.json\n版本位置暂填 changelog-page；按 footer > menu > header > changelog-page 复核布局后锁定。产品实现需 VERSION 与 CHANGELOG.md。\n下一步：请所有者审查，再执行 node scripts/rmdl.mjs approve。草稿状态禁止直接开发/交付。\n');
+    process.stdout.write(`\n选型草稿已生成：rmdl.project.json\n下一步：请所有者审查，再执行 ${cliInvocation(root, 'approve')}。草稿状态禁止直接开发/交付。\n`);
   } finally {rl.close();}
 }
 async function approve(root) {
@@ -380,10 +396,14 @@ async function approve(root) {
     const problems=validateSelection(config);
     if (problems.length) throw new Error('审批失败，草稿保持不变：\n' + problems.join('\n'));
     writeJSON(dest,config);
-    process.stdout.write('选型已标记 locked。请继续使用受保护分支/指定审查者验证审批真实性；尚需脚手架与 CI 实施。\n');
+    process.stdout.write(`选型已标记 locked。请继续使用受保护分支/指定审查者验证审批真实性；尚需脚手架与 CI 实施。\n下一步：${cliInvocation(root, 'check')} 验证静态门禁。\n`);
   } finally {rl.close();}
 }
-function usage() {process.stdout.write('Usage: node scripts/rmdl.mjs init new|refactor | approve | check | audit | version [--release] [--root path]\n');}
+function usage(root) {
+  process.stdout.write(`Usage: node ${cliScript(root)} init new|refactor | approve | check | audit | version [--release] [--root path]\n`);
+  const absoluteRoot = path.resolve(root);
+  if (path.resolve(process.cwd()) !== absoluteRoot) process.stdout.write(`当前不在项目根，请追加 --root "${absoluteRoot.split(path.sep).join('/')}"\n`);
+}
 async function main() {
   const [command, arg]=process.argv.slice(2);
   const root=getRoot(process.argv.slice(2));
@@ -394,6 +414,6 @@ async function main() {
   else if (command==='audit') {
     const failures=check(root);
     process.stdout.write(`审计记录：${failures.length} 个静态策略问题。审计命令不会修改代码；视觉质量须人工审查。\n`);
-  } else usage();
+  } else usage(root);
 }
 main().catch(e=>{process.stderr.write(`RMDL: ${e.message}\n`);process.exitCode=1;});
