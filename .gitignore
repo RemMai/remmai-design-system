@@ -16,9 +16,14 @@ Thumbs.db
 *.pfx
 .npmrc.local
 
+# 发布前由 scripts/prepack.mjs 生成的标准快照（不进 Git，避免双份规范源）
+standard/
+*.tgz
+
 # .NET
-bin/
-obj/
+**/obj/
+**/[Bb]in/Debug/
+**/[Bb]in/Release/
 *.user
 *.suo
 *.db

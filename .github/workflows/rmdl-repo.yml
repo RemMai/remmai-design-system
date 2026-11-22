@@ -19,6 +19,8 @@ jobs:
         run: node --test tests/rmdl-guard.test.mjs
       - name: Verify standard initialization and update workflows
         run: node --test tests/rmdl-bootstrap.test.mjs
+      - name: Verify npm package mode (init/update/lock)
+        run: node --test tests/rmdl-npm.test.mjs
 # This checks the RMDL STANDARD REPOSITORY, not an application.
 # Business repo sample is under templates/project/.github/workflows.
 # Build/typecheck/visual checks must be added when packages are publishable.

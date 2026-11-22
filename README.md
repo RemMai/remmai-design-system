@@ -39,6 +39,39 @@
 | 15 | [后端权限与Authentik双模标准](docs/15-后端权限与Authentik双模标准.md) | 自管RBAC与Authentik OAuth双模权限体系与对接契约 |
 | 16 | [产品版本与构建标识](docs/16-产品版本与构建标识.md) | .NET 11、VERSION + Git commit、前后端构建绑定与展示 |
 
+## npm 全局安装（日常使用推荐）
+
+标准本体随 npm 包一起发布，不需要 Git 凭据，也不需要 submodule：
+
+```bash
+npm install -g rem-ai-design
+remdl init ./my-product      # 写入 vendor/rmdl + Agent 入口 + 锁定记录
+remdl update ./my-product    # 按项目锁定版本更新；--to 0.4.1 指定版本
+remdl check ./my-product     # 标准门禁；--project 追加真实工程检查
+remdl version                # CLI / 包内标准 / 项目锁定版本
+remdl doctor                 # 环境自检
+```
+
+> **Windows 注意**：`cmd.exe` 自带 `REM` 注释命令，会静默吞掉 `rem` 指令。请用 PowerShell 或 Git Bash，或者直接敲 `remdl`。两个名字指向同一个入口。
+
+`init` 只在空目录（或仅有 `.git`）执行；检测到 `vendor/rmdl` 被本地修改时 `update` 会拒绝覆盖，确认放弃改动后加 `--force`。锁定的版本与 commit 记录在项目的 `rmdl.bootstrap.json`，与全局 CLI 版本解耦。
+
+仍然需要 Git submodule 模式时，给 `init` / `update` 加 `--git`。
+
+### 发布（维护者）
+
+`VERSION` 与 `package.json` 的 `version` 必须一致；打 Tag 推送到 GitHub 后由 `.github/workflows/publish-npm.yml` 校验并发布：
+
+```bash
+node scripts/check-repo.mjs
+npm test
+node scripts/bump-version.mjs 0.4.1    # 同时改 VERSION 与 package.json
+git commit -am "chore: release 0.4.1"
+git tag v0.4.1 && git push origin main --tags
+```
+
+仓库 Secrets 需要配置 `NPM_TOKEN`（npm Automation token）。私有仓库拿不到 npm provenance，因此流水线不使用 `--provenance`。
+
 ## 规范结构与优先级
 
 - `RMDL.md`：设计语言和工程架构主标准（继承 v0.3，仍有效）。

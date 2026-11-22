@@ -1,0 +1,71 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只打包校验，不真正发布'
+        type: boolean
+        default: true
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify tag, VERSION and package.json agree
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const version = fs.readFileSync("VERSION", "utf8").trim();
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            if (pkg.version !== version) { console.error(`package.json ${pkg.version} != VERSION ${version}`); process.exit(1); }
+            const ref = process.env.GITHUB_REF_NAME || "";
+            if (ref.startsWith("v") && ref.slice(1) !== version) {
+              console.error(`tag ${ref} != VERSION ${version}`); process.exit(1);
+            }
+            console.log(`version ${version} ok`);
+          '
+
+      - name: Repository checks
+        run: node scripts/check-repo.mjs
+
+      - name: Guard tests
+        run: node --test tests/rmdl-guard.test.mjs
+
+      - name: Bootstrap (git mode) tests
+        run: node --test tests/rmdl-bootstrap.test.mjs
+
+      - name: npm mode tests
+        run: node --test tests/rmdl-npm.test.mjs
+
+      - name: Build standard snapshot
+        run: node scripts/prepack.mjs
+
+      - name: Pack dry run
+        run: npm pack --dry-run
+
+      - name: Publish
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

@@ -12,9 +12,21 @@ const required = [
   'policy/session-baseline.md', 'opencode.json', 'templates/project/opencode.json',
   'docs/16-产品版本与构建标识.md',
   'scripts/bootstrap.mjs', 'rmdl.cmd', 'tests/rmdl-bootstrap.test.mjs',
+  'package.json', 'VERSION', 'bin/rem.mjs', 'scripts/npm-mode.mjs',
+  'scripts/prepack.mjs', 'tests/rmdl-npm.test.mjs',
 ];
 const problems = [];
 for (const file of required) if (!fs.existsSync(path.join(root, file))) problems.push(`Missing file: ${file}`);
+let pkg;
+try { pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')); }
+catch (e) { problems.push(`package.json: ${e.message}`); }
+if (pkg) {
+  const version = fs.existsSync(path.join(root, 'VERSION')) ? fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim() : '';
+  if (pkg.name !== 'rem-ai-design') problems.push(`package.json name must stay rem-ai-design (got ${pkg.name})`);
+  if (pkg.version !== version) problems.push(`package.json version ${pkg.version} != VERSION ${version}`);
+  if (!pkg.bin?.remdl || !pkg.bin?.rem) problems.push('package.json: bin must expose both remdl and rem');
+  if (!Array.isArray(pkg.files) || !pkg.files.includes('standard/')) problems.push('package.json: files must ship the standard/ snapshot');
+}
 for (const [file, baseline] of [['opencode.json', 'policy/session-baseline.md'], ['templates/project/opencode.json', 'vendor/rmdl/policy/session-baseline.md']]) {
   try {
     const config = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
